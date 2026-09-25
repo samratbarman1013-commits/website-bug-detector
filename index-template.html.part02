@@ -114,7 +114,7 @@ function renderReport(host, finalUrl) {
     if (!group.length) return;
     const h = document.createElement("h3");
     h.className = "section-title";
-    h.textContent = SEV_LABEL[sev] + " (" + group.length > ")";
+    h.textContent = SEV_LABEL[sev] + " (" + group.length + ")";
     cont.appendChild(h);
     group.forEach(f => {
       const div = document.createElement("div");
@@ -251,7 +251,7 @@ function aiExtract(urlStr, page) {
   f[6]  = /\.(tk|ml|ga|cf|gq|xyz|top|buzz|click|link|work|rest|fit|country|stream|download|gdn|racing|loan|men|party|review|science|webcam|site|icu|cam)$/i.test(host) ? 1 : 0;
   f[7]  = host.indexOf("xn--") !== -1 ? 1 : 0;
   f[8]  = uo.protocol === "https:" ? 1 : 0;
-  f[9]  = Math.min(uo.pathname.split("/").filter(Boolean().length / 8, 1);
+  f[9]  = Math.min(uo.pathname.split("/").filter(Boolean).length / 8, 1);
   f[10] = Math.min((uo.search || "").length / 100, 1);
   f[11] = urlStr.indexOf("@") !== -1 ? 1 : 0;
   f[12] = /login|signin|verify|account|secure|update|password|wallet|bank/i.test(urlStr) ? 1 : 0;
@@ -268,14 +268,14 @@ function aiExtract(urlStr, page) {
     f[14] = Math.min(t.length / 80, 1);
     f[15] = d ? 1 : 0;
     f[16] = Math.min(d.length / 300, 1);
-    f[17] = doc.querySelector('meta[name="viewport" i]')) ? 1 : 0;
+    f[17] = doc.querySelector('meta[name="viewport" i]') ? 1 : 0;
     f[18] = (doc.querySelector("meta[charset i]") || /charset=/i.test(html.slice(0, 2000))) ? 1 : 0;
     f[19] = doc.documentElement.getAttribute("lang") ? 1 : 0;
     f[20] = doc.querySelector('link[rel*="icon" i]') ? 1 : 0;
     f[21] = Math.min(doc.querySelectorAll("h1").length / 5, 1);
     const imgs = doc.querySelectorAll("img");
     f[22] = Math.min(imgs.length / 100, 1);
-    f[23] = imgs.length > doc.querySelectorAll('img:not([alt]), img[alt=""]').length / imgs.length : 0;
+    f[23] = imgs.length ? doc.querySelectorAll('img:not([alt]), img[alt=""]').length / imgs.length : 0;
     f[24] = Math.min(doc.querySelectorAll("[style]").length / 50, 1);
     f[25] = Math.min(doc.querySelectorAll("script").length / 40, 1);
     f[26] = Math.min(doc.querySelectorAll("iframe").length / 5, 1);
@@ -289,13 +289,13 @@ function aiExtract(urlStr, page) {
     const jq = html.match(/jquery[.\-\/]?(\d+)\.(\d+)/i);
     f[32] = (jq || /jquery/i.test(html)) ? 1 : 0;
     f[33] = jq ? Math.min(parseInt(jq[1], 10) / 3, 1) : 0;
-    f[34] = Math.min*["center", "font", "marquee", "frameset", "frame", "big", "strike", "applet"]
+    f[34] = Math.min(["center", "font", "marquee", "frameset", "frame", "big", "strike", "applet"]
       .reduce((a, tg) => a + doc.getElementsByTagName(tg).length, 0) / 5, 1);
     const blanks = doc.querySelectorAll('a[target="_blank"]');
     let unsafe = 0;
     blanks.forEach(a => { if (!((a.getAttribute("rel") || "").toLowerCase().includes("noopener"))) unsafe++; });
     f[35] = blanks.length ? unsafe / blanks.length : 0;
-    f[36]  = Math.min((html.match(/\beval\s*\(/g) || []).length / 10, 1);
+    f[36] = Math.min((html.match(/\beval\s*\(/g) || []).length / 10, 1);
     f[37] = Math.min(((html.match(/\batob\s*\(/g) || []).length +
                       (html.match(/unescape\s*\(/g) || []).length +
                       (html.match(/fromCharCode/g) || []).length +
@@ -304,8 +304,8 @@ function aiExtract(urlStr, page) {
     const kws = ["verify your account", "account suspended", "wallet", "bitcoin", "seed phrase",
                  "gift card", "you have won", "prize", "unlock your", "limited time", "act now", "urgent"];
     const bodyTxt = (doc.body ? doc.body.textContent : "").toLowerCase().slice(0, 4000);
-    f[39]  = Math.min(kws.reduce((a, k) => a + (bodyTxt.split(k).length - 1), 0) / 8, 1);
-    f[40]  = /coinhive|cryptonight|stratum\s*\+?\ss*tcp|miner\.js|webminer/i.test(html) ? 1 : 0;
+    f[39] = Math.min(kws.reduce((a, k) => a + (bodyTxt.split(k).length - 1), 0) / 8, 1);
+    f[40] = /coinhive|cryptonight|stratum\s*\+?\s*tcp|miner\.js|webminer/i.test(html) ? 1 : 0;
     const srcs = Array.from(doc.querySelectorAll("script[src]"));
     f[41] = Math.min(srcs.length / 20, 1);
     f[42] = srcs.length ? srcs.filter(s => /^http:\/\//i.test(s.getAttribute("src") || "")).length / srcs.length : 0;
@@ -405,7 +405,7 @@ function runAiAnalysis(urlStr, page) {
   AI_MODEL.labels.forEach((l, c) => { window.__AI.probabilities[l] = Math.round(probs[c] * 100) / 100; });
 
   log("[+] AI: phishing " + Math.round(probs[0] * 100) + "% | malware " + Math.round(probs[1] * 100) +
-      "% | outdated " + Math.round(probs[2] * 100) + "% | quality " + Math.round(probs[3]   100) + "%", "ok");
+      "% | outdated " + Math.round(probs[2] * 100) + "% | quality " + Math.round(probs[3] * 100) + "%", "ok");
 
   const maxP = Math.max.apply(null, Array.from(probs));
   if (maxP >= 0.6) {
@@ -423,7 +423,7 @@ function runAiAnalysis(urlStr, page) {
 
 /* ============================== wiring ============================== */
 
-$("scanBtn").addEventListener("click", () = runScan($("url").value));
+$("scanBtn").addEventListener("click", () => runScan($("url").value));
 $("url").addEventListener("keydown", e => { if (e.key === "Enter") runScan($("url").value); });
 $("rescanBtn").addEventListener("click", () => {
   $("summary").style.display = "none";
@@ -434,7 +434,7 @@ $("exportBtn").addEventListener("click", () => {
   const blob = new Blob([JSON.stringify(LAST_REPORT, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.downloadd = "bughunter-report.json";
+  a.download = "bughunter-report.json";
   a.click();
   URL.revokeObjectURL(a.href);
 });
