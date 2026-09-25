@@ -1,5 +1,4 @@
 name: Build AI model + deploy
-
 on:
   push:
     paths: ['index-template.html*', '.github/workflows/build.yml']
@@ -18,14 +17,16 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install numpy
-        run: pip install numpy
+      - name: Install numpy + PyTorch (CPU)
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install numpy
 
-      - name: Train AI risk model (round 1)
-        run: python3 train_ai.py 270
+      - name: Train transformer AI risk model (round 1)
+        run: python3 train_ai.py 160
 
-      - name: Train AI risk model (round 2, validates + exports)
-        run: python3 train_ai.py 280 resume
+      - name: Train transformer AI risk model (round 2, validates + exports)
+        run: python3 train_ai.py 90 resume
 
       - name: Verify quantized model
         run: python3 verify_model.py
@@ -39,7 +40,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html model.json
           git diff --cached --quiet && echo "nothing to commit" && exit 0
-          git commit -m "Build index.html with embedded 1.5M-param AI model [skip ci]"
+          git commit -m "Build index.html with embedded 8.27M-param transformer AI model [skip ci]"
           git push
 
   deploy:

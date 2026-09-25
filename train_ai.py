@@ -1,24 +1,35 @@
 #!/usr/bin/env python3
 """
-BugHunter AI risk model — v4.
-Architecture : MLP 2608 -> 1860 -> 930 -> 465 -> 4 (sigmoid heads)
+BugHunter AI risk model — v4.5.  REAL TRANSFORMER.
+Architecture : pre-LN transformer encoder
+               input 2608 -> 8 segments x 326 (+1 CLS) -> token proj 336
+               6 encoder layers: 8-head self-attention (d=336) + FFN 336->1344->336
+               final LayerNorm on CLS -> 4 sigmoid heads
+Parameters   : 8,269,972
 Inputs       : 2560 hashed bag-of-tokens (FNV-1a % 2560) + 48 numeric features
 Outputs      : multi-label threat probabilities
                [phishing/scam, malware/compromise, outdated stack, poor quality]
-Parameters   : 7,018,249
-Training     : numpy + Adam, BCE loss, on a heuristic-derived synthetic corpus
-               (expert rules distilled into a neural net) with noise tokens and
-               missing-data augmentation for robustness.
+Training     : PyTorch (CPU) + AdamW, BCE loss, on a heuristic-derived synthetic
+               corpus (expert rules distilled into a neural net) with noise tokens
+               and missing-data augmentation.
 Usage         : python3 train_ai.py <steps_this_round> [resume]
+               (validates + exports model.json when cumulative steps >= 250)
 """
 import json, base64, time, sys
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
 rng = np.random.default_rng(42)
+torch.manual_seed(42)
+torch.set_num_threads(2)
 
 HASH_DIM, N_FEAT = 2560, 48
-IN_DIM = HASH_DIM + N_FEAT
-H1, H2, H3, NOUT = 1860, 930, 465, 4
+IN_DIM = HASH_DIM + N_FEAT          # 2608
+SEGS, SEG_DIM = 8, 326              # 8 x 326 = 2608
+D_MODEL, N_HEADS, N_LAYERS, FF = 336, 8, 6, 1344
+TOTAL_STEPS = 250
 LABELS = ["phishing_scam", "malware_compromised", "outdated_insecure", "poor_quality"]
 
 def fnv1a(s):
@@ -114,7 +125,7 @@ def gen_batch(n):
                   "mal": np.zeros(n, bool), "outd": np.zeros(n, bool),
                   "qual": np.zeros(n, bool)}
 
-    # ---------------- class overrides (same order as scalar spec) -------------
+    # ---------------- class overrides ----------------
     if phish.any():
         m = phish
         url_len[m] = rng.uniform(60, 200, m.sum())
@@ -183,15 +194,13 @@ def gen_batch(n):
 
     # ---------------- hashed token block ----------------
     X = np.zeros((n, IN_DIM), np.float32)
-    # benign tokens: 20-55 per sample (with-replacement approx is fine after dedupe)
     k = rng.integers(20, 55, n)
     draw = rng.integers(0, len(BENIGN), (n, 55))
     mask = rng.random((n, 55)) * 55 < k[:, None]
     BI = VOCAB_IDX["benign"]
     rows, cols = np.nonzero(mask)
     X[rows, BI[draw[rows, cols]]] = 1.0
-    # class vocab tokens
-    for name, toks, p in VOCAB_IDS:
+    for name, toks, p in VOCABS:
         if name == "benign":
             continue
         active = tok_counts[name]
@@ -200,7 +209,6 @@ def gen_batch(n):
         sel = (rng.random((n, len(toks))) < p) & active[:, None]
         r_, c_ = np.nonzero(sel)
         X[r_, VOCAB_IDX[name][c_]] = 1.0
-    # noise tokens
     cnt = rng.integers(0, 25, n)
     total = int(cnt.sum())
     if total:
@@ -208,80 +216,101 @@ def gen_batch(n):
         ridx = np.repeat(np.arange(n), cnt)
         X[ridx, nidx] = 1.0
     X[:, HASH_DIM:] = f
-    # missing-page augmentation
     miss = rng.random(n) < 0.03
     X[miss, HASH_DIM + 13: HASH_DIM + N_FEAT] = 0.5
 
     Y = np.stack([phish, malw, outd, qual], axis=1).astype(np.float32)
     return X, Y
 
-VOCAB_IDS = VOCABS
+# ---------------- transformer model ------------------------------------------------
 
-# ---------------- model -------------------------------------------------------
-def init_params():
-    def he(out, inn):
-        return (rng.standard_normal((out, inn)) * np.sqrt(2.0 / inn)).astype(np.float32)
-    return {"W1": he(H1, IN_DIM), "b1": np.zeros(H1, np.float32),
-            "W2": he(H2, H1), "b2": np.zeros(H2, np.float32),
-            "W3": he(H3, H2), "b3": np.zeros(H3, np.float32),
-            "W4": he(NOUT, H3), "b4": np.zeros(NOUT, np.float32)}
+class Block(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.ln1 = nn.LayerNorm(D_MODEL)
+        self.attn = nn.MultiheadAttention(D_MODEL, N_HEADS, batch_first=True)
+        self.ln2 = nn.LayerNorm(D_MODEL)
+        self.fc1 = nn.Linear(D_MODEL, FF)
+        self.fc2 = nn.Linear(FF, D_MODEL)
 
-def forward(P, X):
-    z1 = X @ P["W1"].T + P["b1"]; a1 = np.maximum(z1, 0)
-    z2 = a1 @ P["W2"].T + P["b2"]; a2 = np.maximum(z2, 0)
-    z3 = a2 @ P["W3"].T + P["b3"]; a3 = np.maximum(z3, 0)
-    return z1, a1, z2, a2, z3, a3, a3 @ P["W4"].T + P["b4"]
+    def forward(self, x):
+        t = self.ln1(x)
+        a, _ = self.attn(t, t, t, need_weights=False)
+        x = x + a
+        x = x + self.fc2(F.relu(self.fc1(self.ln2(x))))
+        return x
 
-def sigmoid(z):
-    return 1.0 / (1.0 + np.exp(-z))
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.proj = nn.Linear(SEG_DIM, D_MODEL)
+        self.cls = nn.Parameter(torch.zeros(D_MODEL))
+        self.pos = nn.Parameter(torch.zeros(1, SEGS + 1, D_MODEL))
+        self.blocks = nn.ModuleList([Block() for _ in range(N_LAYERS)])
+        self.lnF = nn.LayerNorm(D_MODEL)
+        self.head = nn.Linear(D_MODEL, 4)
 
-def init_opt(P):
-    return {k: {"m": np.zeros_like(v), "v": np.zeros_like(v)} for k, v in P.items()}
+    def forward(self, x):                    # x: (B, 2608)
+        B = x.shape[0]
+        seg = x.view(B, SEGS, SEG_DIM)
+        toks = self.proj(seg) + self.pos[:, 1:, :]
+        cls = self.cls.view(1, 1, D_MODEL).expand(B, 1, D_MODEL) + self.pos[:, :1, :]
+        h = torch.cat([cls, toks], dim=1)
+        for b in self.blocks:
+            h = b(h)
+        return self.head(self.lnF(h[:, 0]))  # logits (B, 4)
 
-def adam_step(P, opt, g, step, lr=2e-3, wd=1e-4):
-    for k in P:
-        g[k] += wd * P[k]
-        m, v = opt[k]["m"], opt[k]["v"]
-        m *= 0.9; m += 0.1 * g[k]
-        v *= 0.999; v += 0.001 * g[k] * g[k]
-        mh = m / (1 - 0.9 ** step); vh = v / (1 - 0.999 ** step)
-        P[k] -= lr * mh / (np.sqrt(vh) + 1e-8)
+def count_params(net):
+    return sum(p.numel() for p in net.parameters())
 
-def train_round(P, opt, steps, t_start=0, batch=256):
+def train_round(net, opt, steps, t_start, batch=64):
     t0 = time.time()
     for step in range(t_start + 1, t_start + steps + 1):
         X, Y = gen_batch(batch)
-        z1, a1, z2, a2, z3, a3, z4 = forward(P, X)
-        p = sigmoid(z4)
-        n = batch
-        dz4 = (p - Y) / n
-        g = {}
-        g["W4"] = dz4.T @ a3; g["b4"] = dz4.sum(0)
-        da3 = dz4 @ P["W4"]; dz3 = da3 * (z3 > 0)
-        g["W3"] = dz3.T @ a2; g["b3"] = dz3.sum(0)
-        da2 = dz3 @ P["W3"]; dz2 = da2 * (z2 > 0)
-        g["W2"] = dz2.T @ a1; g["b2"] = dz2.sum(0)
-        da1 = dz2 @ P["W2"]; dz1 = da1 * (z1 > 0)
-        g["W1"] = dz1.T @ X; g["b1"] = dz1.sum(0)
-        adam_step(P, opt, g, step)
-        if step % 50 == 0:
-            loss = -np.mean(Y * np.log(p + 1e-9) + (1 - Y) * np.log(1 - p + 1e-9))
-            print(f"step {step:4d}  loss {loss:.5f}  ({time.time()-t0:.0f}s)", flush=True)
+        xb = torch.from_numpy(X)
+        yb = torch.from_numpy(Y)
+        logits = net(xb)
+        loss = F.binary_cross_entropy_with_logits(logits, yb)
+        opt.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
+        opt.step()
+        if step % 25 == 0:
+            with torch.no_grad():
+                p = torch.sigmoid(logits)
+                acc = ((p > 0.5) == yb).float().mean().item()
+            print(f"step {step:4d}  loss {loss.item():.5f}  acc {acc:.3f}  ({time.time()-t0:.0f}s)", flush=True)
 
-def auc(y, s):
-    order = np.argsort(s)
-    ranks = np.empty(len(s)); ranks[order] = np.arange(1, len(s) + 1)
-    pos = y == 1
-    n1, n0 = pos.sum(), (~pos).sum()
-    if n1 == 0 or n0 == 0: return float("nan")
-    return float((ranks[pos].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
-
-def validate(P, N=20000):
+def validate(net, N=4000):
+    net.eval()
     Xv, Yv = gen_batch(N)
-    pv = sigmoid(forward(P, Xv)[-1])
-    for c in range(NOUT):
-        print(f"val AUC {LABELS[c]:22s} = {auc(Yv[:, c], pv[:, c]):.4f}", flush=True)
-    return Xv, Yv, pv
+    with torch.no_grad():
+        p = torch.sigmoid(net(torch.from_numpy(Xv))).numpy()
+    for c in range(4):
+        order = np.argsort(p[:, c])
+        ranks = np.empty(N); ranks[order] = np.arange(1, N + 1)
+        pos = Yv[:, c] == 1
+        n1, n0 = pos.sum(), (~pos).sum()
+        auc = float((ranks[pos].sum() - n1 * (n1 + 1) / 2) / (n1 * n0)) if n1 and n0 else float("nan")
+        print(f"val AUC {LABELS[c]:22s} = {auc:.4f}", flush=True)
+    net.train()
+    return Xv, Yv, p
+
+def saliency(net):
+    """Per-class mean input-gradient over class-positive synthetic samples."""
+    out = []
+    for c in range(4):
+        X, Y = gen_batch(8192)
+        sel = np.where(Y[:, c] > 0.5)[0][:256]
+        if len(sel) < 32:
+            sel = np.where(Y[:, c] >= 0)[0][:256]
+        xb = torch.from_numpy(X[sel]).requires_grad_(True)
+        s = torch.sigmoid(net(xb))[:, c].sum()
+        net.zero_grad()
+        s.backward()
+        g = xb.grad.detach().numpy().mean(axis=0)
+        out.append(g.astype(np.float32))
+    return out
 
 def q_int8(W):
     s = float(np.abs(W).max() / 127.0) or 1e-12
@@ -291,23 +320,36 @@ def q_int8(W):
 def b64(arr):
     return base64.b64encode(arr.tobytes()).decode("ascii")
 
-def export_model(P):
-    layers = []
-    for Wk, bk, inn, out in [("W1", "b1", IN_DIM, H1), ("W2", "b2", H1, H2),
-                             ("W3", "b3", H2, H3), ("W4", "b4", H3, NOUT)]:
-        q, s = q_int8(P[Wk])
-        layers.append({"in": inn, "out": out, "s": s,
-                       "b": [float(v) for v in P[bk]], "w": b64(q)})
+def qt(W):  # torch tensor -> quantized dict
+    q, s = q_int8(W.detach().numpy())
+    return {"s": s, "w": b64(q)}
+
+def export_model(net):
+    n_params = count_params(net)
+    sd = net.state_dict()
+    blocks = []
+    for i in range(N_LAYERS):
+        p = f"blocks.{i}."
+        ipw = sd[p + "attn.in_proj_weight"].numpy()           # (3D, D)
+        ipb = sd[p + "attn.in_proj_bias"].numpy()              # (3D,)
+        blocks.append({
+            "ln1": {"g": sd[p + "ln1.weight"].numpy().tolist(), "b": sd[p + "ln1.bias"].numpy().tolist()},
+            "qkv": {**qt(torch.from_numpy(ipw)), "b": ipb.tolist()},
+            "out": {**qt(sd[p + "attn.out_proj.weight"]), "b": sd[p + "attn.out_proj.bias"].numpy().tolist()},
+            "ln2": {"g": sd[p + "ln2.weight"].numpy().tolist(), "b": sd[p + "ln2.bias"].numpy().tolist()},
+            "w1": {**qt(sd[p + "fc1.weight"]), "b": sd[p + "fc1.bias"].numpy().tolist()},
+            "w2": {**qt(sd[p + "fc2.weight"]), "b": sd[p + "fc2.bias"].numpy().tolist()},
+        })
     sal = []
-    for c in range(NOUT):
-        g = (P["W1"].T @ P["W2"].T @ P["W3"].T @ P["W4"][c]).astype(np.float32)
+    for g in saliency(net):
         q, s = q_int8(g)
         sal.append({"s": s, "g": b64(q)})
-    n_params = IN_DIM * H1 + H1 + H1 * H2 + H2 + H2 * H3 + H3 + H3 * NOUT + NOUT
     model = {
-        "version": "4.0",
+        "version": "4.5",
         "params": n_params,
         "hashDim": HASH_DIM, "nFeat": N_FEAT,
+        "segs": SEGS, "segDim": SEG_DIM, "dModel": D_MODEL,
+        "heads": N_HEADS, "layers": N_LAYERS, "ff": FF,
         "labels": ["Phishing / scam", "Malware / compromise", "Outdated & insecure stack", "Poor quality / SEO"],
         "featNames": ["url_length", "host_length", "host_digit_ratio", "host_hyphens", "subdomains",
             "ip_host", "suspicious_tld", "punycode", "https", "path_depth", "query_length", "at_sign",
@@ -320,7 +362,13 @@ def export_model(P):
             "crypto_miner_marker", "external_script_count", "http_external_script_ratio",
             "csp_header", "hsts_header", "xfo_header", "meta_refresh", "password_fields"],
         "tokenVocab": {t: fnv1a(t) % HASH_DIM for t in ALL_TOKENS},
-        "layers": layers, "sal": sal,
+        "proj": {**qt(sd["proj.weight"]), "b": sd["proj.bias"].numpy().tolist()},
+        "cls": sd["cls"].numpy().tolist(),
+        "pos": sd["pos"].numpy()[0].tolist(),
+        "blocks": blocks,
+        "lnF": {"g": sd["lnF.weight"].numpy().tolist(), "b": sd["lnF.bias"].numpy().tolist()},
+        "head": {**qt(sd["head.weight"]), "b": sd["head.bias"].numpy().tolist()},
+        "sal": sal,
     }
     with open("model.json", "w") as f:
         json.dump(model, f, separators=(",", ":"))
@@ -329,23 +377,25 @@ def export_model(P):
 if __name__ == "__main__":
     steps = int(sys.argv[1]) if len(sys.argv) > 1 else 200
     resume = len(sys.argv) > 2 and sys.argv[2] == "resume"
-    ckpt = "ckpt.npz"
-    if resume:
-        z = np.load(ckpt, allow_pickle=True)
-        P = {k: z[k] for k in z.files if "|" not in k and k != "step"}
-        opt = {}
-        for k in z.files:
-            if k.endswith("|m"):
-                base = k[:-2]
-                opt[base] = {"m": z[k], "v": z[base + "|v"]}
-        t_start = int(z["step"])
+    ckpt = "ckpt.pt"
+    net = Net()
+    n_params = count_params(net)
+    assert n_params == 8_269_972, "unexpected parameter count: %s" % n_params
+    opt = torch.optim.AdamW(net.parameters(), lr=3e-3, weight_decay=0.01)
+    t_start = 0
+    if resume and __import__("os").path.exists(ckpt):
+        z = torch.load(ckpt, weights_only=False)
+        net.load_state_dict(z["model"])
+        opt.load_state_dict(z["opt"])
+        t_start = z["step"]
+        del z
+        import gc; gc.collect()
         print(f"resumed at step {t_start}", flush=True)
-    else:
-        P = init_params(); opt = init_opt(P); t_start = 0
-    train_round(P, opt, steps, t_start)
-    np.savez(ckpt, step=t_start + steps, **P,
-             **{f"{k}|m": opt[k]["m"] for k in P}, **{f"{k}|v": opt[k]["v"] for k in P})
-    print(f"checkpoint saved at step {t_start + steps}", flush=True)
-    if (t_start + steps) >= 550:
-        validate(P)
-        export_model(P)
+    net.train()
+    train_round(net, opt, steps, t_start)
+    t_start += steps
+    torch.save({"model": net.state_dict(), "opt": opt.state_dict(), "step": t_start}, ckpt)
+    print(f"checkpoint saved at step {t_start}", flush=True)
+    if t_start >= TOTAL_STEPS:
+        Xv, Yv, pv = validate(net)
+        export_model(net)
