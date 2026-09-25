@@ -396,4 +396,4 @@ async function runScan(rawUrl) {
 
   /* 1. reachability + TLS */
   log("$ bughunter scan " + host, "info");
-  log("[*] Resolving and probing https://"
+  log("[*] Resolving and probing https://" 
