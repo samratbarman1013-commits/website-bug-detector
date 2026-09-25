@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-BugHunter AI risk model — v3.
-Architecture : MLP 2608 -> 1152 -> 576 -> 288 -> 4 (sigmoid heads)
+BugHunter AI risk model — v3.5.
+Architecture : MLP 2608 -> 1440 -> 720 -> 360 -> 4 (sigmoid heads)
 Inputs       : 2560 hashed bag-of-tokens (FNV-1a % 2560) + 48 numeric features
 Outputs      : multi-label threat probabilities
                [phishing/scam, malware/compromise, outdated stack, poor quality]
-Parameters   : 3,837,028
+Parameters   : 5,055,484
 Training     : numpy + Adam, BCE loss, on a heuristic-derived synthetic corpus
                (expert rules distilled into a neural net) with noise tokens and
                missing-data augmentation for robustness.
@@ -18,7 +18,7 @@ rng = np.random.default_rng(42)
 
 HASH_DIM, N_FEAT = 2560, 48
 IN_DIM = HASH_DIM + N_FEAT
-H1, H2, H3, NOUT = 1152, 576, 288, 4
+H1, H2, H3, NOUT = 1440, 720, 360, 4
 LABELS = ["phishing_scam", "malware_compromised", "outdated_insecure", "poor_quality"]
 
 def fnv1a(s):
@@ -305,7 +305,7 @@ def export_model(P):
         sal.append({"s": s, "g": b64(q)})
     n_params = IN_DIM * H1 + H1 + H1 * H2 + H2 + H2 * H3 + H3 + H3 * NOUT + NOUT
     model = {
-        "version": "3.0",
+        "version": "3.5",
         "params": n_params,
         "hashDim": HASH_DIM, "nFeat": N_FEAT,
         "labels": ["Phishing / scam", "Malware / compromise", "Outdated & insecure stack", "Poor quality / SEO"],

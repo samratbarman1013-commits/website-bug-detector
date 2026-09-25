@@ -1,4 +1,4 @@
-# BugHunter v3 — Website Bug & Vulnerability Detector
+# BugHunter v3.5 — Website Bug & Vulnerability Detector
 
 A **single-file website scanner** that checks any site for real bugs, security
 issues and quality problems — and tells you exactly how to fix each one.
@@ -9,16 +9,16 @@ your machine.
 
 Live instance: https://bughunter-website-scanner.netlify.app
 
-## What's new in v3
+## What's new in v3.5
 
-- **AI risk engine — 3,837,028 parameters** (2.37M in v2, 1.5M in v1):
-  `2608 → 1152 → 576 → 288 → 4`, retrained and re-verified (AUC ~1.00 on
-  all heads, quantized accuracy ≥ 99.7%).
-- **6 new checks** — layout tables, missing canonical URL, autoplaying media,
-  generic "click here" link text, empty links/buttons with no accessible name,
-  password-field autocomplete hints.
-- Everything from v2 (SRI, sandboxed iframes, CLS, form labels, scan history)
-  and v1 is still included.
+- **AI risk engine — 5,055,484 parameters** (3.84M in v3, 2.37M in v2, 1.5M in v1):
+  `2608 → 1440 → 720 → 360 → 4`, retrained and re-verified (AUC ~1.00 on
+  all heads, quantized accuracy ≥ 99.6%).
+- **Offline chat assistant** — click the 💬 button and ask about your scan,
+  any finding, or web security topics (CSP, SRI, HSTS, phishing…). Rule-based,
+  runs entirely inside the page, nothing is sent anywhere.
+- **UI polish** — page-load animation, refined cards and hover states.
+- Everything from v3, v2 and v1 is still included.
 
 ## What it detects
 
@@ -37,17 +37,22 @@ Live instance: https://bughunter-website-scanner.netlify.app
   generic link text, empty links/buttons, password-field autocomplete hints
 - Technology detection (WordPress, React, Laravel, Cloudflare, …)
 - 0–100 score, severity-grouped findings, fix + copy-paste code for every issue,
-  JSON report export, scan history
+  JSON report export, scan history, offline chat assistant
 
-**AI layer — 3,837,028 parameters (v3)**
+**AI layer — 5,055,484 parameters (v3.5)**
 - Multi-label neural network: `2560 hashed bag-of-tokens (FNV-1a) + 48 engineered
-  features → 1152 → 576 → 288 → 4` sigmoid heads
+  features → 1440 → 720 → 360 → 4` sigmoid heads
 - Outputs: phishing/scam, malware/compromise, outdated stack, poor quality probabilities
 - Trained offline (`train_ai.py`) by distilling expert security heuristics into the
   network on a synthetic corpus, with noise-token and missing-data augmentation
 - Exported int8-quantized (per-tensor scale) and embedded in `index.html` — inference
   runs locally in JavaScript on plain typed arrays
 - Saliency-based explanations show which tokens/features pushed each verdict
+
+**Offline assistant (v3.5)**
+- Rule-based chat: knowledge base of every check the scanner performs plus
+  live answers computed from YOUR scan results (priorities, summaries, scores)
+- 100% local — no network calls, no data collection, works offline
 
 ## Usage
 
@@ -61,8 +66,8 @@ Or deploy it anywhere static (Netlify, GitHub Pages, …) — it is one file.
 >
 > ```bash
 > pip install numpy
-> python3 train_ai.py 270
-> python3 train_ai.py 280 resume   # validates + exports model.json
+> python3 train_ai.py 330
+> python3 train_ai.py 220 resume   # validates + exports model.json
 > python3 verify_model.py
 > python3 build.py                # reassembles template parts + injects model
 > ```
@@ -87,6 +92,8 @@ Or deploy it anywhere static (Netlify, GitHub Pages, …) — it is one file.
 - The AI model was trained on heuristic-derived synthetic data — it is a distillation
   of expert rules, not a model trained on a real phishing/malware corpus. Treat its
   scores as a lead, not proof.
+- The chat assistant is rule-based (keyword + knowledge base), not a large language
+  model. It knows this scanner's checks and your scan results — not general knowledge.
 - This is a passive, surface-level scan. It is **not** a penetration test.
 
 ## Ethics

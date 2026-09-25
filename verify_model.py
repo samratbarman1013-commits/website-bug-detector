@@ -19,8 +19,8 @@ def fwd(X):
         h = 1 / (1 + np.exp(-z)) if i == len(Ws) - 1 else np.maximum(z, 0)
     return h
 
-assert M["params"] == 3_837_028, "unexpected parameter count: %s" % M["params"]
-assert [L["in"] for L in M["layers"]] == [2608, 1152, 576, 288]
+assert M["params"] == 5_055_484, "unexpected parameter count: %s" % M["params"]
+assert [L["in"] for L in M["layers"]] == [2608, 1440, 720, 360]
 
 Xv, Yv = T.gen_batch(4000)
 p = fwd(Xv)
