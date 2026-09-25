@@ -598,17 +598,6 @@ function checkSecurityHeaders(headers, isHttps) {
       "Without CSP the browser allows scripts from anywhere, which makes XSS far more damaging.",
       "Add a Content-Security-Policy header on your web server / CDN.",
       'Content-Security-Policy: default-src \'self\'; script-src \'self\'; object-src \'none\'; frame-ancestors \'self\'; base-uri \'self\';'],
-    ["strict-transport-security", "med  { name: "Nuxt",      test: h => /__nuxt|nuxt/i.test(h) },
-  { name: "Svelte",    test: h => /svelte/i.test(h) },
-];
-
-function checkSecurityHeaders(headers, isHttps) {
-  const h = headers;
-  const wanted = [
-    ["content-security-policy", "high", "No Content-Security-Policy header",
-      "Without CSP the browser allows scripts from anywhere, which makes XSS far more damaging.",
-      "Add a Content-Security-Policy header on your web server / CDN.",
-      'Content-Security-Policy: default-src \'self\'; script-src \'self\'; object-src \'none\'; frame-ancestors \'self\'; base-uri \'self\';'],
     ["strict-transport-security", "medium", "No Strict-Transport-Security (HSTS) header",
       "Without HSTS a user can be tricked into visiting the site over plain HTTP (SSL-strip attacks).",
       "Enable HSTS once you are sure HTTPS works for all subdomains.",
@@ -1005,6 +994,166 @@ async function checkRobotsSitemap(base) {
     // entire site disallowed — only flag when literally only that
   }
   if (robots && robots.code === 200 && !/sitemap:/i.test(robots.body)) {
+    const sm = await fetchWithStatus(base + "/sitemap.xml");
+    if (!sm || sm.code !== 200) {
+      addFinding("info", "No sitemap found", "SEO",
+        "Sitemaps help search engines discover all your pages.",
+        "Generate a sitemap and reference it in robots.txt.",
+        "Sitemap: https://example.com/sitemap.xml");
+    }
+  }
+}
+
+/* ============================== orchestration ============================== */
+
+async function runScan(rawUrl) {
+  FINDINGS = [];
+  TECH = [];
+  window.__AI = null;
+  TERM.innerHTML = "";
+  $("findings").innerHTML = "";
+  $("findings").style.display = "none";
+  $("summary").style.display = "none";
+  $("techBox").style.display = "none";
+  TERM.style.display = "block";
+  document.querySelector(".progress-track").style.display = "block";
+  $("scanBtn").disabled = true;
+  $("scanBtn").textContent = "SCANNING…";
+
+  let host = rawUrl.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+  if (!host || !/\./.test(host)) {
+    alert("Please enter a valid domain, e.g. example.com");
+    $("scanBtn").disabled = false;
+    $("scanBtn").textContent = "▶ RUN SCAN";
+    return;
+  }
+  const httpsUrl = "https://" + host + "/";
+  const httpUrl  = "http://" + host + "/";
+  setProgress(5);
+
+  /* 1. reachability + TLS */
+  log("$ bughunter scan " + host, "info");
+  log("[*] Resolving and probing https://" + host + " …", "info");
+  const httpsOk = await probeReachable(httpsUrl);
+  let httpOk = false;
+  if (httpsOk) log("[+] HTTPS reachable — TLS working", "ok");
+  else {
+    log("[!] HTTPS unreachable, testing plain HTTP …", "warn");
+    httpOk = await probeReachable(httpUrl);
+  }
+  setProgress(20);
+
+  let finalUrl, isHttps;
+  if (httpsOk) { finalUrl = httpsUrl; isHttps = true; }
+  else if (httpOk) {
+    finalUrl = httpUrl; isHttps = false;
+    addFinding("high", "Site does not support HTTPS", "No TLS — everything readable in transit",
+      "All traffic (including any logins) travels unencrypted and can be read or modified by anyone on the network path.",
+      "Install a free TLS certificate (Let's Encrypt) and redirect HTTP to HTTPS.",
+      "certbot --nginx -d " + host);
+  } else {
+    log("[-] Host unreachable over HTTPS and HTTP", "err");
+    log("[-] Scan aborted. Check the domain / your connection.", "err");
+    setProgress(100);
+    $("scanBtn").disabled = false;
+    $("scanBtn").textContent = "▶ RUN SCAN";
+    TERM.style.display = "block";
+    return;
+  }
+  log("[*] Fetching page source for analysis …", "info");
+  setProgress(35);
+
+  /* 2. page source */
+  const page = await fetchPage(finalUrl);
+  if (!page) {
+    log("[-] Could not retrieve page source (site or proxies unreachable)", "err");
+    addFinding("info", "Page source could not be fetched", "Scan limitation",
+      "The HTML could not be retrieved from this browser (network or CORS proxy limits), so the deep content analysis was skipped.",
+      "Try again, or run a server-side scan for full results.", null);
+  } else {
+    log("[+] Retrieved " + page.html.length.toLocaleString() + " bytes of HTML" + (page.via !== "direct" ? " (via proxy)" : ""), "ok");
+  }
+  setProgress(50);
+
+  /* 3. headers */
+  if (page && page.via === "direct" && Object.keys(page.headers).length) {
+    log("[*] Reading security headers (direct CORS access) …", "info");
+    checkSecurityHeaders(page.headers, isHttps);
+  } else {
+    addFinding("info", "Security headers not verifiable from the browser", "Scan limitation",
+      "The browser hides response headers unless the site sends CORS headers. Check these manually with: curl -I https://" + host,
+      "Verify these five headers exist: Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy.",
+      "curl -sI https://" + host + " | grep -iE 'content-security|strict-transport|x-frame|x-content-type|referrer-policy'");
+  }
+  setProgress(60);
+
+  /* 4. HTML analysis */
+  if (page && page.html) {
+    log("[*] Analysing HTML, SEO and accessibility …", "info");
+    checkHtml(page.html, finalUrl, isHttps);
+    log("[+] Content analysis done", "ok");
+  }
+  /* 4b. AI risk model */
+  log("[*] Running embedded AI risk model (" + AI_MODEL.params.toLocaleString() + " parameters, in-browser inference) …", "info");
+  try { runAiAnalysis(finalUrl, page); } catch (e) { log("[-] AI analysis skipped: " + e.message, "warn"); }
+  setProgress(75);
+
+  /* 5. sensitive files */
+  log("[*] Checking for exposed sensitive files (/.env, /.git/config …) …", "info");
+  await checkSensitiveFiles(finalUrl);
+  setProgress(85);
+
+  /* 6. robots + sitemap */
+  log("[*] Checking robots.txt / sitemap.xml …", "info");
+  await checkRobotsSitemap(finalUrl);
+  setProgress(95);
+  await sleep(250);
+
+  log("[✓] Scan complete — " + FINDINGS.length + " finding(s)", "ok");
+  setProgress(100);
+
+  renderReport(host, finalUrl);
+  $("scanBtn").disabled = false;
+  $("scanBtn").textContent = "▶ RUN SCAN";
+}
+
+function setProgress(pct) {
+  $("progressFill").style.width = pct + "%";
+}
+
+/* ============================== rendering ============================== */
+
+const SEV_ORDER = ["critical", "high", "medium", "low", "info"];
+const SEV_LABEL = { critical: "CRITICAL", high: "HIGH", medium: "MEDIUM", low: "LOW", info: "INFO" };
+
+function scoreFromFindings() {
+  let s = 100;
+  for (const f of FINDINGS) {
+    if (f.sev === "critical") s -= 25;
+    else if (f.sev === "high") s -= 14;
+    else if (f.sev === "medium") s -= 7;
+    else if (f.sev === "low") s -= 3;
+  }
+  return Math.max(0, Math.min(100, s));
+}
+
+function renderReport(host, finalUrl) {
+  const score = scoreFromFindings();
+  const counts = {};
+  for (const f of FINDINGS) counts[f.sev] = (counts[f.sev] || 0) + 1;
+
+  /* gauge */
+  const arc = $("gaugeArc");
+  const C = 2 * Math.PI * 56;
+  arc.style.strokeDashoffset = C - (C * score / 100);
+  arc.setAttribute("stroke", score >= 80 ? "#34d399" : score >= 60 ? "#facc15" : score >= 40 ? "#fb923c" : "#f87171");
+  $("scoreVal").textContent = score;
+
+  $("targetUrl").textContent = "target: " + finalUrl;
+
+  /* pills */
+  const pillRow = $("pillRow");
+  pillRow.in&& robots.code === 200 && !/sitemap:/i.test(robots.body)) {
     const sm = await fetchWithStatus(base + "/sitemap.xml");
     if (!sm || sm.code !== 200) {
       addFinding("info", "No sitemap found", "SEO",
