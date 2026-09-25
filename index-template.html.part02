@@ -1,4 +1,54 @@
-nerHTML = "";
+t(step, text) {
+  const body = $("thoughtsBody");
+  $("thoughtsBox").style.display = "block";
+  const d = document.createElement("div");
+  d.className = "thought";
+  d.innerHTML = '<span class="th-step">[' + step + ']</span> ' + esc(text);
+  body.appendChild(d);
+  body.scrollTop = body.scrollHeight;
+  THOUGHTS_N++;
+  $("thoughtsMeta").textContent = THOUGHTS_N + " thought" + (THOUGHTS_N === 1 ? "" : "s");
+}
+function setThoughtsOpen(o) {
+  THOUGHTS_OPEN = o;
+  $("thoughtsBody").style.display = o ? "flex" : "none";
+  $("thoughtsCaret").textContent = o ? "▼" : "▶";
+}
+$("thoughtsHead").addEventListener("click", () => setThoughtsOpen(!THOUGHTS_OPEN));
+
+/* ============================== rendering ============================== */
+
+const SEV_ORDER = ["critical", "high", "medium", "low", "info"];
+const SEV_LABEL = { critical: "CRITICAL", high: "HIGH", medium: "MEDIUM", low: "LOW", info: "INFO" };
+
+function scoreFromFindings() {
+  let s = 100;
+  for (const f of FINDINGS) {
+    if (f.sev === "critical") s -= 25;
+    else if (f.sev === "high") s -= 14;
+    else if (f.sev === "medium") s -= 7;
+    else if (f.sev === "low") s -= 3;
+  }
+  return Math.max(0, Math.min(100, s));
+}
+
+function renderReport(host, finalUrl) {
+  const score = scoreFromFindings();
+  const counts = {};
+  for (const f of FINDINGS) counts[f.sev] = (counts[f.sev] || 0) + 1;
+
+  /* gauge */
+  const arc = $("gaugeArc");
+  const C = 2 * Math.PI * 56;
+  arc.style.strokeDashoffset = C - (C * score / 100);
+  arc.setAttribute("stroke", score >= 80 ? "#34d399" : score >= 60 ? "#facc15" : score >= 40 ? "#fb923c" : "#f87171");
+  $("scoreVal").textContent = score;
+
+  $("targetUrl").textContent = "target: " + finalUrl;
+
+  /* pills */
+  const pillRow = $("pillRow");
+  pillRow.innerHTML = "";
   SEV_ORDER.forEach(s => {
     if (counts[s]) {
       const p = document.createElement("span");
@@ -89,7 +139,7 @@ nerHTML = "";
 }
 
 /* ============================== AI risk model ============================== */
-/* 5,055,484-parameter multi-label neural net, int8-quantized, embedded below.
+/* 7,018,249-parameter multi-label neural net, int8-quantized, embedded below.
    Input : 2560 hashed bag-of-tokens (FNV-1a) + 48 engineered numeric features
    Output: [phishing, malware, outdated, quality] probabilities. */
 
@@ -441,7 +491,7 @@ const CHAT_KB = [
   { keys: ["robots", "sitemap"],
     text: "robots.txt tells crawlers what to skip and points to your sitemap.xml; the sitemap helps search engines discover all your pages. Both are optional but cheap wins for SEO." },
   { keys: ["neural", "machine learning", "how does the ai", "how does your ai", "llm"],
-    text: "The AI layer is a 5,055,484-parameter multi-label neural network (2608 inputs → 1440 → 720 → 360 → 4 sigmoid outputs), trained offline by distilling expert security heuristics, then int8-quantized and embedded in this page. It scores phishing, malware/compromise, outdated stack and poor quality — and shows the top signals behind each verdict. Inference runs locally on typed arrays in milliseconds." },
+    text: "The AI layer is a 7,018,249-parameter multi-label neural network (2608 inputs → 1860 → 930 → 465 → 4 sigmoid outputs), trained offline by distilling expert security heuristics, then int8-quantized and embedded in this page. It scores phishing, malware/compromise, outdated stack and poor quality — and shows the top signals behind each verdict. Inference runs locally on typed arrays in milliseconds." },
   { keys: ["privacy", "offline", "data leave", "does this send", "where does my data", "do you collect"],
     text: "Everything — fetching, scanning, AI inference and this chat — happens inside your browser. No accounts, no tracking, no server of ours. Your scan history lives in your browser's localStorage only, and you can clear it with one click. To read the site you typed, the scanner uses direct CORS requests or public CORS proxies — but nothing about you is ever collected." },
   { keys: ["penetration", "pentest", "pen test"],
