@@ -4,7 +4,7 @@ BugHunter AI risk model — v2.
 Architecture : MLP 2608 -> 768 -> 384 -> 192 -> 4 (sigmoid heads)
 Inputs       : 2560 hashed bag-of-tokens (FNV-1a % 2560) + 48 numeric features
 Outputs      : multi-label threat probabilities
-               [phishing/scam, malware/compromised, outdated stack, poor quality]
+               [phishing/scam, malware/compromise, outdated stack, poor quality]
 Parameters   : 2,373,700
 Training     : numpy + Adam, BCE loss, on a heuristic-derived synthetic corpus
                (expert rules distilled into a neural net) with noise tokens and
