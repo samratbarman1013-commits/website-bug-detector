@@ -1,4 +1,47 @@
-.via === "direct" && Object.keys(page.headers).length) {
++ host + " …", "info");
+  const httpsOk = await probeReachable(httpsUrl);
+  let httpOk = false;
+  if (httpsOk) log("[+] HTTPS reachable — TLS working", "ok");
+  else {
+    log("[!] HTTPS unreachable, testing plain HTTP …", "warn");
+    httpOk = await probeReachable(httpUrl);
+  }
+  setProgress(20);
+
+  let finalUrl, isHttps;
+  if (httpsOk) { finalUrl = httpsUrl; isHttps = true; }
+  else if (httpOk) {
+    finalUrl = httpUrl; isHttps = false;
+    addFinding("high", "Site does not support HTTPS", "No TLS — everything readable in transit",
+      "All traffic (including any logins) travels unencrypted and can be read or modified by anyone on the network path.",
+      "Install a free TLS certificate (Let's Encrypt) and redirect HTTP to HTTPS.",
+      "certbot --nginx -d " + host);
+  } else {
+    log("[-] Host unreachable over HTTPS and HTTP", "err");
+    log("[-] Scan aborted. Check the domain / your connection.", "err");
+    setProgress(100);
+    $("scanBtn").disabled = false;
+    $("scanBtn").textContent = "▶ RUN SCAN";
+    TERM.style.display = "block";
+    return;
+  }
+  log("[*] Fetching page source for analysis …", "info");
+  setProgress(35);
+
+  /* 2. page source */
+  const page = await fetchPage(finalUrl);
+  if (!page) {
+    log("[-] Could not retrieve page source (site or proxies unreachable)", "err");
+    addFinding("info", "Page source could not be fetched", "Scan limitation",
+      "The HTML could not be retrieved from this browser (network or CORS proxy limits), so the deep content analysis was skipped.",
+      "Try again, or run a server-side scan for full results.", null);
+  } else {
+    log("[+] Retrieved " + page.html.length.toLocaleString() + " bytes of HTML" + (page.via !== "direct" ? " (via proxy)" : ""), "ok");
+  }
+  setProgress(50);
+
+  /* 3. headers */
+  if (page && page.via === "direct" && Object.keys(page.headers).length) {
     log("[*] Reading security headers (direct CORS access) …", "info");
     checkSecurityHeaders(page.headers, isHttps);
   } else {
@@ -153,6 +196,7 @@ function renderReport(host, finalUrl) {
 
   LAST_REPORT = {
     tool: "BugHunter",
+    version: BH_VERSION,
     scannedAt: new Date().toISOString(),
     target: finalUrl,
     score: score,
@@ -160,10 +204,12 @@ function renderReport(host, finalUrl) {
     ai: window.__AI || null,
     findings: FINDINGS.map(f => ({ severity: f.sev, title: f.title, category: f.subtitle, problem: f.desc, fix: f.fix, code: f.code }))
   };
+
+  saveHistory(finalUrl, score);
 }
 
 /* ============================== AI risk model ============================== */
-/* 1,500,548-parameter multi-label neural net, int8-quantized, embedded below.
+/* 2,373,700-parameter multi-label neural net, int8-quantized, embedded below.
    Input : 2560 hashed bag-of-tokens (FNV-1a) + 48 engineered numeric features
    Output: [phishing, malware, outdated, quality] probabilities. */
 
@@ -438,6 +484,51 @@ $("exportBtn").addEventListener("click", () => {
   a.click();
   URL.revokeObjectURL(a.href);
 });
+
+/* ============================== scan history (v2) ============================== */
+
+const HIST_KEY = "bughunter_history_v2";
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch (e) { return []; }
+}
+
+function saveHistory(url, score) {
+  try {
+    let h = loadHistory().filter(e => e.url !== url);
+    h.unshift({ url: url, score: score, at: new Date().toISOString() });
+    h = h.slice(0, 8);
+    localStorage.setItem(HIST_KEY, JSON.stringify(h));
+  } catch (e) {}
+  renderHistory();
+}
+
+function renderHistory() {
+  const box = $("historyBox");
+  if (!box) return;
+  const h = loadHistory();
+  if (!h.length) { box.style.display = "none"; return; }
+  box.style.display = "block";
+  const row = $("histRow");
+  row.innerHTML = "";
+  h.forEach(e => {
+    if (!e || !e.url) return;
+    const score = Math.round(e.score || 0);
+    const col = score >= 80 ? "var(--green)" : score >= 60 ? "var(--yellow)" : score >= 40 ? "var(--orange)" : "var(--red)";
+    const chip = document.createElement("span");
+    chip.className = "hist-chip";
+    chip.innerHTML = '<b style="color:' + col + '">' + score + '</b> · ' +
+      esc(String(e.url).replace(/^https?:\/\//, "").replace(/\/$/, ""));
+    chip.title = "Rescan " + e.url;
+    chip.addEventListener("click", () => { $("url").value = e.url; runScan(e.url); });
+    row.appendChild(chip);
+  });
+}
+$("histClear").addEventListener("click", () => {
+  try { localStorage.removeItem(HIST_KEY); } catch (e) {}
+  renderHistory();
+});
+renderHistory();
 </script>
 </body>
 </html>

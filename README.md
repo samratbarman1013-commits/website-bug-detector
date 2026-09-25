@@ -1,4 +1,4 @@
-# BugHunter — Website Bug & Vulnerability Detector
+# BugHunter v2 — Website Bug & Vulnerability Detector
 
 A **single-file website scanner** that checks any site for real bugs, security
 issues and quality problems — and tells you exactly how to fix each one.
@@ -9,6 +9,18 @@ your machine.
 
 Live instance: https://bughunter-website-scanner.netlify.app
 
+## What's new in v2
+
+- **AI risk engine upgraded** — 2,373,700 parameters (up from 1,500,548):
+  `2608 → 768 → 384 → 192 → 4`, retrained and re-verified (all heads
+  AUC 1.00 on validation, quantized accuracy ≥ 99.7%).
+- **8 new checks** — Subresource Integrity (SRI) on external scripts,
+  unsandboxed iframes, `javascript:` links, duplicate DOM IDs, image layout
+  shift (CLS), unlabeled form controls, meta-refresh redirects,
+  inline-event-handler audit.
+- **Scan history** — recent scans and scores are kept in your browser
+  (localStorage) for one-click rescans. Reports are stamped with the version.
+
 ## What it detects
 
 **Rule-based engine**
@@ -16,21 +28,24 @@ Live instance: https://bughunter-website-scanner.netlify.app
 - Security headers (CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
 - Sensitive file exposure — `/.env`, `/.git/config`, `/.DS_Store` with content-signature verification
 - Outdated libraries (jQuery < 3.x with known CVEs), mixed content, reverse tabnabbing
-- Password forms over plain HTTP, meta-refresh redirects, crypto-miner markers
+- Password forms over plain HTTP, crypto-miner markers
 - SEO & HTML quality: title, meta description, viewport, charset, lang, alt text,
   deprecated tags, heading structure, robots.txt / sitemap.xml
+- **v2:** Subresource Integrity (SRI), unsandboxed iframes, `javascript:` links,
+  duplicate DOM IDs, image width/height (CLS), unlabeled form inputs,
+  meta-refresh redirects, inline-handler audit
 - Technology detection (WordPress, React, Laravel, Cloudflare, …)
 - 0–100 score, severity-grouped findings, fix + copy-paste code for every issue,
-  JSON report export
+  JSON report export, scan history
 
-**AI layer — 1,500,548 parameters**
+**AI layer — 2,373,700 parameters (v2)**
 - Multi-label neural network: `2560 hashed bag-of-tokens (FNV-1a) + 48 engineered
-  features → 512 → 256 → 128 → 4` sigmoid heads
+  features → 768 → 384 → 192 → 4` sigmoid heads
 - Outputs: phishing/scam, malware/compromise, outdated stack, poor quality probabilities
 - Trained offline (`train_ai.py`) by distilling expert security heuristics into the
   network on a synthetic corpus, with noise-token and missing-data augmentation
 - Exported int8-quantized (per-tensor scale) and embedded in `index.html` — inference
-  runs locally in JavaScript on plain typed arrays (~50 ms per scan)
+  runs locally in JavaScript on plain typed arrays
 - Saliency-based explanations show which tokens/features pushed each verdict
 
 ## Usage
