@@ -1,172 +1,95 @@
-t(step, text) {
-  const body = $("thoughtsBody");
-  $("thoughtsBox").style.display = "block";
-  const d = document.createElement("div");
-  d.className = "thought";
-  d.innerHTML = '<span class="th-step">[' + step + ']</span> ' + esc(text);
-  body.appendChild(d);
-  body.scrollTop = body.scrollHeight;
-  THOUGHTS_N++;
-  $("thoughtsMeta").textContent = THOUGHTS_N + " thought" + (THOUGHTS_N === 1 ? "" : "s");
-}
-function setThoughtsOpen(o) {
-  THOUGHTS_OPEN = o;
-  $("thoughtsBody").style.display = o ? "flex" : "none";
-  $("thoughtsCaret").textContent = o ? "▼" : "▶";
-}
-$("thoughtsHead").addEventListener("click", () => setThoughtsOpen(!THOUGHTS_OPEN));
-
-/* ============================== rendering ============================== */
-
-const SEV_ORDER = ["critical", "high", "medium", "low", "info"];
-const SEV_LABEL = { critical: "CRITICAL", high: "HIGH", medium: "MEDIUM", low: "LOW", info: "INFO" };
-
-function scoreFromFindings() {
-  let s = 100;
-  for (const f of FINDINGS) {
-    if (f.sev === "critical") s -= 25;
-    else if (f.sev === "high") s -= 14;
-    else if (f.sev === "medium") s -= 7;
-    else if (f.sev === "low") s -= 3;
-  }
-  return Math.max(0, Math.min(100, s));
-}
-
-function renderReport(host, finalUrl) {
-  const score = scoreFromFindings();
-  const counts = {};
-  for (const f of FINDINGS) counts[f.sev] = (counts[f.sev] || 0) + 1;
-
-  /* gauge */
-  const arc = $("gaugeArc");
-  const C = 2 * Math.PI * 56;
-  arc.style.strokeDashoffset = C - (C * score / 100);
-  arc.setAttribute("stroke", score >= 80 ? "#34d399" : score >= 60 ? "#facc15" : score >= 40 ? "#fb923c" : "#f87171");
-  $("scoreVal").textContent = score;
-
-  $("targetUrl").textContent = "target: " + finalUrl;
-
-  /* pills */
-  const pillRow = $("pillRow");
-  pillRow.innerHTML = "";
-  SEV_ORDER.forEach(s => {
-    if (counts[s]) {
-      const p = document.createElement("span");
-      p.className = "pill " + s;
-      p.textContent = counts[s] + " " + SEV_LABEL[s];
-      pillRow.appendChild(p);
+L = M.layers, H = M.heads, HD = D / H;
+  const n = S + 1;                                   /* tokens: CLS + 8 segments */
+  const h = new Float32Array(n * D);
+  for (let i = 0; i < D; i++) h[i] = TR.cls[i] + TR.pos[i];
+  for (let s = 0; s < S; s++) {                       /* token projection + positions */
+    const to = (s + 1) * D, xo = s * SD;
+    for (let i = 0; i < D; i++) {
+      let acc = TR.projB[i];
+      const wo = i * SD;
+      for (let j = 0; j < SD; j++) acc += TR.proj[wo + j] * x[xo + j];
+      h[to + i] = acc + TR.pos[to + i];
     }
-  });
-  if (!FINDINGS.filter(f => f.sev !== "info").length) {
-    const p = document.createElement("span");
-    p.className = "pill pass";
-    p.textContent = "✓ NO ISSUES FOUND";
-    pillRow.appendChild(p);
   }
-  $("summary").style.display = "block";
-
-  /* tech chips */
-  if (TECH.length) {
-    const chips = $("chips");
-    chips.innerHTML = "";
-    TECH.forEach(t => {
-      const c = document.createElement("span");
-      c.className = "chip";
-      c.innerHTML = '<span class="dot"></span>' + esc(t);
-      chips.appendChild(c);
-    });
-    $("techBox").style.display = "block";
+  const t = new Float32Array(n * D);
+  const qkv = new Float32Array(3 * n * D);
+  const att = new Float32Array(n * D);
+  const ff = new Float32Array(M.ff);
+  const sc = new Float32Array(n);
+  for (let li = 0; li < L; li++) {
+    const B = TR.blocks[li];
+    for (let k = 0; k < n; k++) aiLN(t, k * D, h, k * D, B.ln1g, B.ln1b, D);
+    for (let k = 0; k < n; k++) {                     /* fused QKV projections */
+      const so = k * D, to = k * 3 * D;
+      for (let i = 0; i < 3 * D; i++) {
+        let acc = B.qkvB[i];
+        const wo = i * D;
+        for (let j = 0; j < D; j++) acc += B.qkv[wo + j] * t[so + j];
+        qkv[to + i] = acc;
+      }
+    }
+    att.fill(0);
+    const scale = 1 / Math.sqrt(HD);
+    for (let hh = 0; hh < H; hh++) {                  /* scaled dot-product attention */
+      const qo = hh * HD, ko = D + hh * HD, vo = 2 * D + hh * HD;
+      for (let i = 0; i < n; i++) {
+        const qb = i * 3 * D + qo;
+        let mx = -Infinity;
+        for (let j = 0; j < n; j++) {
+          const kb = j * 3 * D + ko;
+          let dot = 0;
+          for (let d = 0; d < HD; d++) dot += qkv[qb + d] * qkv[kb + d];
+          dot *= scale;
+          sc[j] = dot;
+          if (dot > mx) mx = dot;
+        }
+        let sum = 0;
+        for (let j = 0; j < n; j++) { sc[j] = Math.exp(sc[j] - mx); sum += sc[j]; }
+        for (let j = 0; j < n; j++) {
+          const p = sc[j] / sum;
+          if (p === 0) continue;
+          const vb = j * 3 * D + vo, ob = i * D + hh * HD;
+          for (let d = 0; d < HD; d++) att[ob + d] += p * qkv[vb + d];
+        }
+      }
+    }
+    for (let k = 0; k < n; k++) {                     /* output projection + residual */
+      const ao = k * D;
+      for (let i = 0; i < D; i++) {
+        let acc = B.outB[i];
+        const wo = i * D;
+        for (let j = 0; j < D; j++) acc += B.out[wo + j] * att[ao + j];
+        h[ao + i] += acc;
+      }
+    }
+    for (let k = 0; k < n; k++) aiLN(t, k * D, h, k * D, B.ln2g, B.ln2b, D);
+    for (let k = 0; k < n; k++) {                     /* FFN 336->1344->336 (ReLU) + residual */
+      const to = k * D;
+      for (let i = 0; i < M.ff; i++) {
+        let acc = B.b1[i];
+        const wo = i * D;
+        for (let j = 0; j < D; j++) acc += B.w1[wo + j] * t[to + j];
+        ff[i] = acc > 0 ? acc : 0;
+      }
+      for (let i = 0; i < D; i++) {
+        let acc = B.b2[i];
+        const wo = i * M.ff;
+        for (let j = 0; j < M.ff; j++) acc += B.w2[wo + j] * ff[j];
+        h[to + i] += acc;
+      }
+    }
   }
-
-  /* findings */
-  const cont = $("findings");
-  cont.innerHTML = "";
-  let rendered = 0;
-  SEV_ORDER.forEach(sev => {
-    const group = FINDINGS.filter(f => f.sev === sev);
-    if (!group.length) return;
-    const h = document.createElement("h3");
-    h.className = "section-title";
-    h.textContent = SEV_LABEL[sev] + " (" + group.length + ")";
-    cont.appendChild(h);
-    group.forEach(f => {
-      const div = document.createElement("div");
-      div.className = "finding";
-      const codeHtml = f.code
-        ? '<div class="fix-label">Fix</div>' + f.fix +
-          '<pre class="code"><button class="copy-btn">copy</button>' + esc(f.code) + "</pre>"
-        : '<div class="fix-label">Fix</div>' + f.fix;
-      div.innerHTML =
-        '<div class="finding-head">' +
-          '<span class="sev ' + f.sev + '">' + SEV_LABEL[f.sev] + '</span>' +
-          '<span class="finding-title">' + esc(f.title) + "<small>" + esc(f.subtitle) + "</small></span>" +
-          '<span class="chev">▶</span>' +
-        '</div>' +
-        '<div class="finding-body">' +
-          '<div class="desc">' + esc(f.desc) + "</div>" + codeHtml +
-        "</div>";
-      div.querySelector(".finding-head").addEventListener("click", () => div.classList.toggle("open"));
-      const cb = div.querySelector(".copy-btn");
-      if (cb) cb.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const txt = div.querySelector("pre.code").textContent.replace(/^copy$/, "").trim();
-        navigator.clipboard.writeText(txt).then(() => {
-          cb.textContent = "copied!";
-          setTimeout(() => cb.textContent = "copy", 1200);
-        }).catch(() => {});
-      });
-      cont.appendChild(div);
-      rendered++;
-    });
-  });
-  if (!rendered) {
-    cont.innerHTML = '<div class="no-issues">✓ Clean scan — no bugs or vulnerabilities detected.</div>';
+  const c = new Float32Array(D);                     /* final LN on the CLS token */
+  aiLN(c, 0, h, 0, TR.lnFg, TR.lnFb, D);
+  const out = new Float32Array(4);
+  for (let i = 0; i < 4; i++) {
+    let acc = TR.headB[i];
+    const wo = i * D;
+    for (let j = 0; j < D; j++) acc += TR.head[wo + j] * c[j];
+    out[i] = 1 / (1 + Math.exp(-acc));
   }
-  cont.style.display = "block";
-
-  LAST_REPORT = {
-    tool: "BugHunter",
-    version: BH_VERSION,
-    scannedAt: new Date().toISOString(),
-    target: finalUrl,
-    score: score,
-    technologies: TECH,
-    ai: window.__AI || null,
-    findings: FINDINGS.map(f => ({ severity: f.sev, title: f.title, category: f.subtitle, problem: f.desc, fix: f.fix, code: f.code }))
-  };
-
-  saveHistory(finalUrl, score);
+  return out;
 }
-
-/* ============================== AI risk model ============================== */
-/* 7,018,249-parameter multi-label neural net, int8-quantized, embedded below.
-   Input : 2560 hashed bag-of-tokens (FNV-1a) + 48 engineered numeric features
-   Output: [phishing, malware, outdated, quality] probabilities. */
-
-const AI_MODEL = __MODEL_DATA__;
-
-const AI_LAYERS = [];
-const AI_SAL = [];
-(function aiInit() {
-  const b2i8 = (b64) => {
-    const bin = atob(b64);
-    const u = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
-    return new Int8Array(u.buffer);
-  };
-  for (const L of AI_MODEL.layers) {
-    const q = b2i8(L.w);
-    const W = new Float32Array(q.length);
-    for (let i = 0; i < q.length; i++) W[i] = q[i] * L.s;
-    AI_LAYERS.push({ W, b: new Float32Array(L.b), inn: L.in, out: L.out });
-  }
-  for (const S of AI_MODEL.sal) {
-    const q = b2i8(S.g);
-    const g = new Float32Array(q.length);
-    for (let i = 0; i < q.length; i++) g[i] = q[i] * S.s;
-    AI_SAL.push(g);
-  }
-})();
 
 let AI_TOKEN_REV = null;
 function aiTokenRev() {
@@ -188,22 +111,6 @@ function aiHash(str) {
     h = Math.imul(h, 0x01000193) >>> 0;
   }
   return h >>> 0;
-}
-
-function aiForward(x) {
-  let h = x;
-  for (let li = 0; li < AI_LAYERS.length; li++) {
-    const L = AI_LAYERS[li];
-    const y = new Float32Array(L.out);
-    for (let o = 0; o < L.out; o++) {
-      let s = L.b[o];
-      const off = o * L.inn;
-      for (let i = 0; i < L.inn; i++) s += L.W[off + i] * h[i];
-      y[o] = (li < AI_LAYERS.length - 1) ? (s > 0 ? s : 0) : (1 / (1 + Math.exp(-s)));
-    }
-    h = y;
-  }
-  return h;
 }
 
 /* Build the model input from the scan result. The 48 numeric features are a
@@ -315,7 +222,7 @@ function aiExtract(urlStr, page) {
 /* saliency-based explanation: which inputs pushed the winning class */
 function aiExplain(ex, ci) {
   const D = AI_MODEL.hashDim;
-  const sal = AI_SAL[ci];
+  const sal = TR.SAL[ci];
   const rev = aiTokenRev();
   const items = [];
   const seen = {};
@@ -490,12 +397,34 @@ const CHAT_KB = [
     text: "Accessibility basics the scanner checks: alt text on images, labels on form inputs, one clear <h1>, a lang attribute, descriptive link text, and no unlabeled icon-only buttons. These are WCAG requirements, legally enforced in many countries — and they help SEO too." },
   { keys: ["robots", "sitemap"],
     text: "robots.txt tells crawlers what to skip and points to your sitemap.xml; the sitemap helps search engines discover all your pages. Both are optional but cheap wins for SEO." },
-  { keys: ["neural", "machine learning", "how does the ai", "how does your ai", "llm"],
-    text: "The AI layer is a 7,018,249-parameter multi-label neural network (2608 inputs → 1860 → 930 → 465 → 4 sigmoid outputs), trained offline by distilling expert security heuristics, then int8-quantized and embedded in this page. It scores phishing, malware/compromise, outdated stack and poor quality — and shows the top signals behind each verdict. Inference runs locally on typed arrays in milliseconds." },
+  { keys: ["neural", "machine learning", "how does the ai", "how does your ai", "llm", "transformer", "real ai"],
+    text: "The AI risk layer is a REAL transformer — an 8,269,972-parameter encoder: the page's tokens and features become 8 embedded segments that pass through 6 layers of multi-head self-attention (8 heads, 336-dim) with a 336→1344→336 feed-forward network, ending in 4 sigmoid heads. It's int8-quantized and embedded in this page; inference runs locally on typed arrays. The chat you're using now is a large language model (online) with this page's rule engine and knowledge base as fallback." },
   { keys: ["privacy", "offline", "data leave", "does this send", "where does my data", "do you collect"],
-    text: "Everything — fetching, scanning, AI inference and this chat — happens inside your browser. No accounts, no tracking, no server of ours. Your scan history lives in your browser's localStorage only, and you can clear it with one click. To read the site you typed, the scanner uses direct CORS requests or public CORS proxies — but nothing about you is ever collected." },
+    text: "BugHunter runs in two modes. The scanner, AI risk transformer and Thoughts view always run 100% locally in your browser. The chat has two modes: ONLINE (default) sends your question plus a short scan summary to a third-party AI service so a large language model can answer — nothing else is collected; OFFLINE (click the label in the chat header) answers only from the built-in knowledge base and sends nothing anywhere. Scan history stays in your browser's localStorage either way." },
   { keys: ["penetration", "pentest", "pen test"],
     text: "BugHunter is a passive, surface-level scanner: it reads what any visitor's browser can read. A penetration test actively probes, exploits and chains vulnerabilities with human judgment. Use this as a quick first pass — it is not a replacement for a real pentest." },
+  { keys: ["xss", "cross site scripting", "cross-site scripting"],
+    text: "Cross-Site Scripting (XSS) is injecting JavaScript into a page so it runs in other users' browsers — it can steal sessions, log keystrokes or deface the site. The fix is threefold: escape all output by context (HTML, attribute, JS), sanitize/validate all input, and add a Content-Security-Policy as a safety net. Never use innerHTML with untrusted strings — use textContent.",
+    fix: "// bad:  el.innerHTML = userInput;  // good: el.textContent = userInput;" },
+  { keys: ["sql injection", "sqli", "sql query"],
+    text: "SQL injection happens when user input is concatenated into a query, letting attackers read or destroy your database. It's #1 on most bug-bounty lists. The fix: always use parameterized queries / prepared statements — never build SQL with string concatenation — and apply least-privilege database permissions.",
+    fix: "Python: cur.execute(\"SELECT ... WHERE name=%s\", (name,))  — never concatenate input into SQL." },
+  { keys: ["csrf", "cross site request forgery", "cross-site request forgery"],
+    text: "CSRF tricks a logged-in user's browser into sending unwanted requests to your site (e.g. transferring money). Defenses: anti-CSRF tokens on every state-changing form, SameSite cookies (Lax or Strict), and verifying the Origin header on sensitive requests.",
+    fix: "Set-Cookie: session=abc; HttpOnly; Secure; SameSite=Lax" },
+  { keys: ["tls", "ssl certificate", "ssl cert", "https certificate"],
+    text: "TLS is the padlock — it encrypts traffic and proves your identity. Common bugs: expired certificates, mixed content, no HTTP→HTTPS redirect, missing HSTS. Free certificates are available from Let's Encrypt with automatic renewal (certbot). Check yours with your browser's padlock icon or SSL Labs' free test." },
+  { keys: ["cors"],
+    text: "CORS (Cross-Origin Resource Sharing) is the browser's rulebook for which sites may read responses from yours. The classic security bug: Access-Control-Allow-Origin: * on responses that carry cookies or private data, or reflecting arbitrary origins with credentials allowed. Allow only the specific origins that need access, and never combine a wildcard with credentials." },
+  { keys: ["cookie", "cookies", "samesite", "httponly"],
+    text: "Cookie security basics: mark session cookies HttpOnly (blocks JavaScript theft — the main XSS payload), Secure (HTTPS only), and SameSite=Lax/Strict (blocks most CSRF). Prefix important cookie names with __Host- to prevent injection from subdomains.",
+    fix: "Set-Cookie: session=xyz; HttpOnly; Secure; SameSite=Lax; Path=/" },
+  { keys: ["2fa", "mfa", "two factor", "two-factor"],
+    text: "Two-factor authentication protects accounts even when passwords leak. Website-side bugs to avoid: revealing whether a username exists before the second factor, not rate-limiting OTP attempts, and allowing infinite 2FA retries. Apps (TOTP) or passkeys are safer than SMS codes." },
+  { keys: ["backup", "backups", "restore"],
+    text: "A site without backups is one bad deploy or hack away from zero. The 3-2-1 rule: 3 copies, 2 different media, 1 off-site. Automate database dumps, keep source in git, and actually TEST a restore — an untested backup is a hope, not a backup." },
+  { keys: ["who are you", "what can you do", "what are you", "your name"],
+    text: "I'm the BugHunter assistant. In online mode I'm powered by a large language model that can answer general questions and reason about YOUR scan results; if the AI service is unreachable I answer from a built-in web-security knowledge base. Ask me what to fix first, what any finding means, or general web-security questions (XSS, SQL injection, CSRF, CSP, TLS…)." },
 ];
 
 function chatAnswer(qRaw) {
@@ -583,7 +512,47 @@ function chatAnswer(qRaw) {
     return t;
   }
   let chatBusy = false;
-  function chatSendMsg() {
+  let CHAT_ONLINE = true;
+  function setChatMode(online) {
+    CHAT_ONLINE = online;
+    $("chatModeLbl").textContent = online
+      ? "⚡ online AI · ask anything — click to switch to offline KB"
+      : "⌂ offline knowledge base — click to switch to online AI";
+  }
+  /* Ask a real large language model, with the current scan as context.
+     Falls back to the built-in knowledge base when unreachable. */
+  async function askOnline(q) {
+    let ctx = "";
+    if (LAST_REPORT) {
+      ctx = "The user has scanned " + LAST_REPORT.target + " with BugHunter; score " + LAST_REPORT.score + "/100.";
+      if (FINDINGS.length) ctx += " Findings so far: " + FINDINGS.slice(0, 8).map(f => "[" + f.sev + "] " + f.title).join("; ") + ".";
+      if (window.__AI) {
+        const P = window.__AI.probabilities;
+        ctx += " Transformer AI risk: phishing " + Math.round((P["Phishing / scam"] || 0) * 100) +
+          "%, malware " + Math.round((P["Malware / compromise"] || 0) * 100) +
+          "%, outdated " + Math.round((P["Outdated & insecure stack"] || 0) * 100) +
+          "%, poor quality " + Math.round((P["Poor quality / SEO"] || 0) * 100) + ".";
+      }
+    } else {
+      ctx = "The user has not scanned a site yet.";
+    }
+    const sys = "You are the assistant inside BugHunter, a browser-based website security scanner. " + ctx +
+      " Answer concisely (under 120 words), be practical and specific; include concrete fixes or short code examples when relevant; be honest when unsure.";
+    const url = "https://text.pollinations.ai/" + encodeURIComponent(q) +
+      "?model=openai&system=" + encodeURIComponent(sys);
+    const ctrl = new AbortController();
+    const tm = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const txt = (await r.text()).trim();
+      if (!txt || txt.length < 2) throw new Error("empty");
+      return txt.slice(0, 2500);
+    } finally {
+      clearTimeout(tm);
+    }
+  }
+  async function chatSendMsg() {
     const inp = $("chatInput");
     const v = inp.value.trim();
     if (!v || chatBusy) return;
@@ -591,13 +560,17 @@ function chatAnswer(qRaw) {
     chatAdd(v, "user");
     chatBusy = true;
     const t = chatTyping();
-    setTimeout(() => {
-      t.remove();
-      let ans;
+    let ans = null;
+    if (CHAT_ONLINE) {
+      try { ans = await askOnline(v); } catch (e) { ans = null; }
+    }
+    t.remove();
+    if (ans === null) {
       try { ans = chatAnswer(v); } catch (e) { ans = "Something went wrong answering that — try another question."; }
-      chatAdd(ans, "bot");
-      chatBusy = false;
-    }, 420 + Math.min(v.length * 6, 500));
+      if (CHAT_ONLINE) ans += "\n\n— [AI service unreachable; answered from the built-in knowledge base. Click the label above to stay offline.]";
+    }
+    chatAdd(ans, "bot");
+    chatBusy = false;
   }
   $("chatFab").addEventListener("click", () => {
     const p = $("chatPanel");
@@ -605,7 +578,7 @@ function chatAnswer(qRaw) {
     $("chatFab").textContent = open ? "✕" : "💬";
     if (open) {
       if (!chatBody.children.length) {
-        chatAdd("Hi! I'm the BugHunter assistant — I run entirely inside this page (no network, no data collection). Ask me about your scan results or web security.", "bot");
+        chatAdd("Hi! I'm the BugHunter assistant — in online mode I'm powered by a large language model, with your scan results as context, so ask me anything. If the AI service can't be reached I'll answer from the built-in security knowledge base.", "bot");
       }
       $("chatInput").focus();
     }
@@ -614,9 +587,10 @@ function chatAnswer(qRaw) {
     $("chatPanel").classList.remove("open");
     $("chatFab").textContent = "💬";
   });
+  $("chatModeLbl").addEventListener("click", () => setChatMode(!CHAT_ONLINE));
   $("chatSend").addEventListener("click", chatSendMsg);
   $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") chatSendMsg(); });
-  ["Explain my score", "What should I fix first?", "Is my site safe?", "How does the AI work?", "What is SRI?"].forEach(s => {
+  ["Explain my score", "What should I fix first?", "Is my site safe?", "What is XSS?", "How does the AI work?", "What is SRI?"].forEach(s => {
     const c = document.createElement("span");
     c.className = "chat-chip";
     c.textContent = s;
