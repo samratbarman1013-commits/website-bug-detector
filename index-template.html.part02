@@ -1,164 +1,4 @@
-&& robots.code === 200 && !/sitemap:/i.test(robots.body)) {
-    const sm = await fetchWithStatus(base + "/sitemap.xml");
-    if (!sm || sm.code !== 200) {
-      addFinding("info", "No sitemap found", "SEO",
-        "Sitemaps help search engines discover all your pages.",
-        "Generate a sitemap and reference it in robots.txt.",
-        "Sitemap: https://example.com/sitemap.xml");
-    }
-  }
-}
-
-/* ============================== orchestration ============================== */
-
-async function runScan(rawUrl) {
-  FINDINGS = [];
-  TECH = [];
-  window.__AI = null;
-  TERM.innerHTML = "";
-  $("findings").innerHTML = "";
-  $("findings").style.display = "none";
-  $("summary").style.display = "none";
-  $("techBox").style.display = "none";
-  TERM.style.display = "block";
-  document.querySelector(".progress-track").style.display = "block";
-  $("scanBtn").disabled = true;
-  $("scanBtn").textContent = "SCANNING…";
-
-  let host = rawUrl.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
-  if (!host || !/\./.test(host)) {
-    alert("Please enter a valid domain, e.g. example.com");
-    $("scanBtn").disabled = false;
-    $("scanBtn").textContent = "▶ RUN SCAN";
-    return;
-  }
-  const httpsUrl = "https://" + host + "/";
-  const httpUrl  = "http://" + host + "/";
-  setProgress(5);
-
-  /* 1. reachability + TLS */
-  log("$ bughunter scan " + host, "info");
-  log("[*] Resolving and probing https://" + host + " …", "info");
-  const httpsOk = await probeReachable(httpsUrl);
-  let httpOk = false;
-  if (httpsOk) log("[+] HTTPS reachable — TLS working", "ok");
-  else {
-    log("[!] HTTPS unreachable, testing plain HTTP …", "warn");
-    httpOk = await probeReachable(httpUrl);
-  }
-  setProgress(20);
-
-  let finalUrl, isHttps;
-  if (httpsOk) { finalUrl = httpsUrl; isHttps = true; }
-  else if (httpOk) {
-    finalUrl = httpUrl; isHttps = false;
-    addFinding("high", "Site does not support HTTPS", "No TLS — everything readable in transit",
-      "All traffic (including any logins) travels unencrypted and can be read or modified by anyone on the network path.",
-      "Install a free TLS certificate (Let's Encrypt) and redirect HTTP to HTTPS.",
-      "certbot --nginx -d " + host);
-  } else {
-    log("[-] Host unreachable over HTTPS and HTTP", "err");
-    log("[-] Scan aborted. Check the domain / your connection.", "err");
-    setProgress(100);
-    $("scanBtn").disabled = false;
-    $("scanBtn").textContent = "▶ RUN SCAN";
-    TERM.style.display = "block";
-    return;
-  }
-  log("[*] Fetching page source for analysis …", "info");
-  setProgress(35);
-
-  /* 2. page source */
-  const page = await fetchPage(finalUrl);
-  if (!page) {
-    log("[-] Could not retrieve page source (site or proxies unreachable)", "err");
-    addFinding("info", "Page source could not be fetched", "Scan limitation",
-      "The HTML could not be retrieved from this browser (network or CORS proxy limits), so the deep content analysis was skipped.",
-      "Try again, or run a server-side scan for full results.", null);
-  } else {
-    log("[+] Retrieved " + page.html.length.toLocaleString() + " bytes of HTML" + (page.via !== "direct" ? " (via proxy)" : ""), "ok");
-  }
-  setProgress(50);
-
-  /* 3. headers */
-  if (page && page.via === "direct" && Object.keys(page.headers).length) {
-    log("[*] Reading security headers (direct CORS access) …", "info");
-    checkSecurityHeaders(page.headers, isHttps);
-  } else {
-    addFinding("info", "Security headers not verifiable from the browser", "Scan limitation",
-      "The browser hides response headers unless the site sends CORS headers. Check these manually with: curl -I https://" + host,
-      "Verify these five headers exist: Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy.",
-      "curl -sI https://" + host + " | grep -iE 'content-security|strict-transport|x-frame|x-content-type|referrer-policy'");
-  }
-  setProgress(60);
-
-  /* 4. HTML analysis */
-  if (page && page.html) {
-    log("[*] Analysing HTML, SEO and accessibility …", "info");
-    checkHtml(page.html, finalUrl, isHttps);
-    log("[+] Content analysis done", "ok");
-  }
-  /* 4b. AI risk model */
-  log("[*] Running embedded AI risk model (" + AI_MODEL.params.toLocaleString() + " parameters, in-browser inference) …", "info");
-  try { runAiAnalysis(finalUrl, page); } catch (e) { log("[-] AI analysis skipped: " + e.message, "warn"); }
-  setProgress(75);
-
-  /* 5. sensitive files */
-  log("[*] Checking for exposed sensitive files (/.env, /.git/config …) …", "info");
-  await checkSensitiveFiles(finalUrl);
-  setProgress(85);
-
-  /* 6. robots + sitemap */
-  log("[*] Checking robots.txt / sitemap.xml …", "info");
-  await checkRobotsSitemap(finalUrl);
-  setProgress(95);
-  await sleep(250);
-
-  log("[✓] Scan complete — " + FINDINGS.length + " finding(s)", "ok");
-  setProgress(100);
-
-  renderReport(host, finalUrl);
-  $("scanBtn").disabled = false;
-  $("scanBtn").textContent = "▶ RUN SCAN";
-}
-
-function setProgress(pct) {
-  $("progressFill").style.width = pct + "%";
-}
-
-/* ============================== rendering ============================== */
-
-const SEV_ORDER = ["critical", "high", "medium", "low", "info"];
-const SEV_LABEL = { critical: "CRITICAL", high: "HIGH", medium: "MEDIUM", low: "LOW", info: "INFO" };
-
-function scoreFromFindings() {
-  let s = 100;
-  for (const f of FINDINGS) {
-    if (f.sev === "critical") s -= 25;
-    else if (f.sev === "high") s -= 14;
-    else if (f.sev === "medium") s -= 7;
-    else if (f.sev === "low") s -= 3;
-  }
-  return Math.max(0, Math.min(100, s));
-}
-
-function renderReport(host, finalUrl) {
-  const score = scoreFromFindings();
-  const counts = {};
-  for (const f of FINDINGS) counts[f.sev] = (counts[f.sev] || 0) + 1;
-
-  /* gauge */
-  const arc = $("gaugeArc");
-  const C = 2 * Math.PI * 56;
-  arc.style.strokeDashoffset = C - (C * score / 100);
-  arc.setAttribute("stroke", score >= 80 ? "#34d399" : score >= 60 ? "#facc15" : score >= 40 ? "#fb923c" : "#f87171");
-  $("scoreVal").textContent = score;
-
-  $("targetUrl").textContent = "target: " + finalUrl;
-
-  /* pills */
-  const pillRow = $("pillRow");
-  pillRow.innerHTML = "";
+nerHTML = "";
   SEV_ORDER.forEach(s => {
     if (counts[s]) {
       const p = document.createElement("span");
@@ -249,7 +89,7 @@ function renderReport(host, finalUrl) {
 }
 
 /* ============================== AI risk model ============================== */
-/* 3,837,028-parameter multi-label neural net, int8-quantized, embedded below.
+/* 5,055,484-parameter multi-label neural net, int8-quantized, embedded below.
    Input : 2560 hashed bag-of-tokens (FNV-1a) + 48 engineered numeric features
    Output: [phishing, malware, outdated, quality] probabilities. */
 
@@ -569,6 +409,171 @@ $("histClear").addEventListener("click", () => {
   renderHistory();
 });
 renderHistory();
+
+/* ============================== assistant chat (v3.5) ============================== */
+/* Fully offline rule-based assistant: answers from a built-in knowledge base
+   and YOUR current scan results. No network calls, no data collection. */
+
+const CHAT_KB = [
+  { keys: ["content security policy", "csp"],
+    text: "Content-Security-Policy (CSP) is a response header that tells the browser exactly which sources a page may load scripts, styles and frames from. Without it, any injected script runs freely, which makes every XSS bug far more damaging. It's one of the highest-value security headers a site can add.",
+    fix: "Content-Security-Policy: default-src 'self'; object-src 'none'; frame-ancestors 'self'; base-uri 'self'" },
+  { keys: ["hsts", "strict transport"],
+    text: "Strict-Transport-Security (HSTS) forces the browser to always use HTTPS for your domain, even if a user clicks or types an http:// link. Without it, a man-in-the-middle can 'SSL-strip' the connection on a hostile network (café Wi-Fi, rogue hotspot).",
+    fix: "Strict-Transport-Security: max-age=31536000; includeSubDomains" },
+  { keys: ["sri", "subresource", "integrity"],
+    text: "Subresource Integrity (SRI) pins a cryptographic hash of each external script/stylesheet. If the CDN or the library is compromised and the file changes by even one bit, the browser refuses to run it. The 2018 Ticketmaster breach was exactly a compromised third-party script without SRI.",
+    fix: '<script src="https://cdn.example.com/lib.js" integrity="sha384-<hash>" crossorigin="anonymous"><\/script>' },
+  { keys: ["mixed content", "mixed-content"],
+    text: "Mixed content means an HTTPS page loading scripts, styles or images over plain http://. Browsers silently block the active kinds — so parts of your page just break — and the padlock is stripped. Upgrade every resource URL to https://." },
+  { keys: ["tabnabbing", "noopener", "target _blank", "target blank"],
+    text: "Reverse tabnabbing: a link with target=\"_blank\" but no rel=\"noopener\" gives the opened page a handle on window.opener — it can silently redirect YOUR tab to a phishing clone. Always add rel=\"noopener noreferrer\"." },
+  { keys: ["phishing"],
+    text: "Phishing signatures this scanner looks for: brand-name domains in odd TLDs (e.g. paypal-login.xyz), punycode (xn--) lookalikes, urgency wording ('verify your account', 'act now'), login pages served over plain HTTP, and credential keywords in URLs. The AI head reports a probability — treat it as a lead, not proof." },
+  { keys: ["jquery"],
+    text: "jQuery 1.x and 2.x have publicly known XSS and prototype-pollution CVEs (e.g. CVE-2020-11022/11023 in versions < 3.5). Attackers actively scan the web for old jQuery. Upgrade to the latest 3.x — the API is largely compatible." },
+  { keys: ["cls", "layout shift", "cumulative"],
+    text: "Cumulative Layout Shift (CLS) is a Core Web Vitals metric. Images without width/height attributes force the browser to reflow the page as they load, so content jumps around while users try to click. Always set dimensions (or a CSS aspect-ratio) on every <img>." },
+  { keys: ["canonical"],
+    text: "A canonical URL (rel=canonical) tells search engines which variant of a page is the 'real' one. Without it, www/non-www, http/https and query-string duplicates each get indexed separately, splitting your ranking across copies." },
+  { keys: ["alt text", "alt attribute", "screen reader", "accessibility", "wcag", "a11y"],
+    text: "Accessibility basics the scanner checks: alt text on images, labels on form inputs, one clear <h1>, a lang attribute, descriptive link text, and no unlabeled icon-only buttons. These are WCAG requirements, legally enforced in many countries — and they help SEO too." },
+  { keys: ["robots", "sitemap"],
+    text: "robots.txt tells crawlers what to skip and points to your sitemap.xml; the sitemap helps search engines discover all your pages. Both are optional but cheap wins for SEO." },
+  { keys: ["neural", "machine learning", "how does the ai", "how does your ai", "llm"],
+    text: "The AI layer is a 5,055,484-parameter multi-label neural network (2608 inputs → 1440 → 720 → 360 → 4 sigmoid outputs), trained offline by distilling expert security heuristics, then int8-quantized and embedded in this page. It scores phishing, malware/compromise, outdated stack and poor quality — and shows the top signals behind each verdict. Inference runs locally on typed arrays in milliseconds." },
+  { keys: ["privacy", "offline", "data leave", "does this send", "where does my data", "do you collect"],
+    text: "Everything — fetching, scanning, AI inference and this chat — happens inside your browser. No accounts, no tracking, no server of ours. Your scan history lives in your browser's localStorage only, and you can clear it with one click. To read the site you typed, the scanner uses direct CORS requests or public CORS proxies — but nothing about you is ever collected." },
+  { keys: ["penetration", "pentest", "pen test"],
+    text: "BugHunter is a passive, surface-level scanner: it reads what any visitor's browser can read. A penetration test actively probes, exploits and chains vulnerabilities with human judgment. Use this as a quick first pass — it is not a replacement for a real pentest." },
+];
+
+function chatAnswer(qRaw) {
+  const q = " " + qRaw.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ") + " ";
+  const hasScan = !!LAST_REPORT;
+
+  if (/^\s*(hi|hello|hey|yo|namaste|hola)\b/.test(q) && q.trim().length < 14) {
+    return "Hello! I'm the BugHunter assistant — fully offline, running inside this page. " + (hasScan
+      ? "You've scanned " + LAST_REPORT.target + " (score " + LAST_REPORT.score + "/100). Ask me about any finding, the score, the AI model, or what to fix first."
+      : "Type a domain above and hit RUN SCAN, then ask me anything about the results — or ask about web security topics like CSP, SRI, HSTS or phishing.");
+  }
+
+  if (/thank/.test(q)) return "You're welcome! Ping me any time — I don't even need a network connection to answer. ◆";
+
+  const scoreText = "Every site starts at 100. Each finding deducts points by severity: critical −25, high −14, medium −7, low −3 (info findings deduct nothing). The result is clamped to 0–100.";
+  if (/score/.test(q)) {
+    return scoreText + (hasScan ? "\n\nYour current score: " + LAST_REPORT.score + "/100." : "\n\nRun a scan and I'll tell you your score.");
+  }
+
+  if (hasScan && /(fix|start|first|priorit|top|important|worst|critical)/.test(q)) {
+    const order = ["critical", "high", "medium", "low"];
+    const top = order.flatMap(s => FINDINGS.filter(f => f.sev === s)).slice(0, 3);
+    if (!top.length) return "Nothing to fix — the last scan came back clean. 🎉 Keep dependencies updated and re-scan after big changes.";
+    let out = "Fix these first, in order:";
+    top.forEach((f, i) => {
+      out += "\n\n" + (i + 1) + ". [" + f.sev.toUpperCase() + "] " + f.title + "\n   → " + f.fix;
+    });
+    return out;
+  }
+
+  if (hasScan && /(summary|overview|report|results?)/.test(q)) {
+    const counts = {};
+    for (const f of FINDINGS) counts[f.sev] = (counts[f.sev] || 0) + 1;
+    return "Scan of " + LAST_REPORT.target + " — score " + LAST_REPORT.score + "/100\nFindings: " +
+      (FINDINGS.length ? Object.keys(counts).map(s => counts[s] + " " + s).join(", ") : "none") + "." +
+      (TECH.length ? "\nDetected stack: " + TECH.join(", ") + "." : "") +
+      (window.__AI ? "\nAI risk: phishing " + Math.round((window.__AI.probabilities["Phishing / scam"] || 0) * 100) +
+        "%, malware " + Math.round((window.__AI.probabilities["Malware / compromise"] || 0) * 100) + "%" : "");
+  }
+
+  if (hasScan && /(safe|secure|risky|danger|should i worry)/.test(q)) {
+    const counts = {};
+    for (const f of FINDINGS) counts[f.sev] = (counts[f.sev] || 0) + 1;
+    if (counts.critical) return "There " + (counts.critical === 1 ? "is 1 CRITICAL finding" : "are " + counts.critical + " CRITICAL findings") + " — treat those as urgent (exposed secrets, credentials over HTTP). Fix them before anything else.";
+    if (counts.high) return "No critical issues, but " + counts.high + " HIGH finding(s). These are real security weaknesses (missing TLS/CSP, supply-chain risk) — fix them soon.";
+    if (FINDINGS.length) return "No critical or high findings — the issues found are quality and polish level. The site's fundamentals look reasonable.";
+    return "The last scan was clean. Just keep dependencies updated and re-scan after changes.";
+  }
+
+  let best = null, bestScore = 0;
+  for (const k of CHAT_KB) {
+    let sc = 0;
+    for (const key of k.keys) if (q.includes(key)) sc += key.length;
+    if (sc > bestScore) { bestScore = sc; best = k; }
+  }
+  if (best) return best.text + (best.fix ? "\n\nExample:\n" + best.fix : "");
+
+  if (hasScan) {
+    for (const f of FINDINGS) {
+      const words = (f.title.toLowerCase().match(/[a-z]{4,}/g) || []).filter(w => q.includes(" " + w + " ") || q.startsWith(" " + w));
+      if (words.length) {
+        return "[" + f.sev.toUpperCase() + "] " + f.title + "\n\n" + f.desc + "\n\nFix: " + f.fix + (f.code ? "\n\n" + f.code : "");
+      }
+    }
+  }
+
+  return "I'm an offline assistant focused on this scan and web-security basics, so I may not know that one. Try:\n• \"what should I fix first\"\n• \"explain my score\"\n• \"what is CSP / SRI / HSTS?\"\n• \"is my site safe?\"\n• \"how does the AI work?\"";
+}
+
+(function chatInit() {
+  const chatBody = $("chatBody");
+  function chatAdd(text, who) {
+    const m = document.createElement("div");
+    m.className = "chat-msg " + who;
+    m.textContent = text;
+    chatBody.appendChild(m);
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+  function chatTyping() {
+    const t = document.createElement("div");
+    t.className = "chat-msg bot chat-typing";
+    t.innerHTML = "<span></span><span></span><span></span>";
+    chatBody.appendChild(t);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    return t;
+  }
+  let chatBusy = false;
+  function chatSendMsg() {
+    const inp = $("chatInput");
+    const v = inp.value.trim();
+    if (!v || chatBusy) return;
+    inp.value = "";
+    chatAdd(v, "user");
+    chatBusy = true;
+    const t = chatTyping();
+    setTimeout(() => {
+      t.remove();
+      let ans;
+      try { ans = chatAnswer(v); } catch (e) { ans = "Something went wrong answering that — try another question."; }
+      chatAdd(ans, "bot");
+      chatBusy = false;
+    }, 420 + Math.min(v.length * 6, 500));
+  }
+  $("chatFab").addEventListener("click", () => {
+    const p = $("chatPanel");
+    const open = p.classList.toggle("open");
+    $("chatFab").textContent = open ? "✕" : "💬";
+    if (open) {
+      if (!chatBody.children.length) {
+        chatAdd("Hi! I'm the BugHunter assistant — I run entirely inside this page (no network, no data collection). Ask me about your scan results or web security.", "bot");
+      }
+      $("chatInput").focus();
+    }
+  });
+  $("chatClose").addEventListener("click", () => {
+    $("chatPanel").classList.remove("open");
+    $("chatFab").textContent = "💬";
+  });
+  $("chatSend").addEventListener("click", chatSendMsg);
+  $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") chatSendMsg(); });
+  ["Explain my score", "What should I fix first?", "Is my site safe?", "How does the AI work?", "What is SRI?"].forEach(s => {
+    const c = document.createElement("span");
+    c.className = "chat-chip";
+    c.textContent = s;
+    c.addEventListener("click", () => { $("chatInput").value = s; chatSendMsg(); });
+    $("chatChips").appendChild(c);
+  });
+})();
 </script>
 </body>
 </html>
