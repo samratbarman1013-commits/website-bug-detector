@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BugHunter v2 — Website Bug & Vulnerability Detector</title>
+<title>BugHunter v3 — Website Bug & Vulnerability Detector</title>
 <style>
   :root {
     --bg: #0a0e14;
@@ -289,8 +289,8 @@
 <div class="wrap">
 
   <header>
-    <div class="logo"><span class="bracket">[</span> BugHunter <span class="ver">v2</span> <span class="bracket">]</span><span class="cursor"></span></div>
-    <p class="tagline">Website bug & vulnerability detector — scans for real issues and shows you <b>exactly how to fix them</b>. Now with a <b>2.4M-parameter AI risk engine</b>.</p>
+    <div class="logo"><span class="bracket">[</span> BugHunter <span class="ver">v3</span> <span class="bracket">]</span><span class="cursor"></span></div>
+    <p class="tagline">Website bug & vulnerability detector — scans for real issues and shows you <b>exactly how to fix them</b>. Now with a <b>3.8M-parameter AI risk engine</b>.</p>
   </header>
 
   <div class="scanbar">
@@ -301,7 +301,7 @@
       </div>
       <button id="scanBtn">▶ RUN SCAN</button>
     </div>
-    <div class="hint">$ enter a URL — checks: reachability · HTTPS/TLS · security headers · sensitive file exposure · outdated libraries · mixed content · SEO & HTML quality · AI risk model (2.4M params)</div>
+    <div class="hint">$ enter a URL — checks: reachability · HTTPS/TLS · security headers · sensitive file exposure · outdated libraries · mixed content · SEO & HTML quality · AI risk model (3.8M params)</div>
     <div id="terminal"></div>
     <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
   </div>
@@ -343,14 +343,14 @@
     <div class="ai-card">
       <div class="ai-head">
         <h3>AI Risk Analysis</h3>
-        <span class="ai-badge">2.37M-parameter neural network · v2 · int8-quantized · runs locally</span>
+        <span class="ai-badge">3.84M-parameter neural network · v3 · int8-quantized · runs locally</span>
       </div>
       <div id="aiBars"></div>
       <div class="ai-sig-title">Top contributing signals</div>
       <div class="ai-chips" id="aiSignals"></div>
       <div class="ai-note">
-        The AI layer is a 2,373,700-parameter multi-label neural network (v2 architecture: 2,560 hashed
-        bag-of-tokens + 48 engineered features → 768 → 384 → 192 → 4 outputs) trained offline by distilling
+        The AI layer is a 3,837,028-parameter multi-label neural network (v3 architecture: 2,560 hashed
+        bag-of-tokens + 48 engineered features → 1152 → 576 → 288 → 4 outputs) trained offline by distilling
         expert security heuristics into the network, then int8-quantized and embedded in this page. Inference runs 100%
         locally — no data leaves your browser. It complements, and does not replace, the rule-based findings.
       </div>
@@ -360,24 +360,24 @@
   <div id="findings"></div>
 
   <details class="whatsnew">
-    <summary>◆ What's new in v2</summary>
+    <summary>◆ What's new in v3</summary>
     <ul>
-      <li><b>AI risk engine upgraded</b> — 2,373,700 parameters (up from 1.5M): 2608 → 768 → 384 → 192 → 4, retrained and re-verified (all heads AUC 1.00, quantized accuracy ≥ 99.7%).</li>
-      <li><b>8 new checks</b> — Subresource Integrity on external scripts, unsandboxed iframes, javascript: links, duplicate IDs, image layout shift (CLS), unlabeled form inputs, meta-refresh redirects, inline-handler audit.</li>
-      <li><b>Scan history</b> — your recent scans and scores are stored in this browser only (localStorage) for one-click rescans.</li>
+      <li><b>AI risk engine — 3,837,028 parameters</b> (2.37M in v2, 1.5M in v1): 2608 → 1152 → 576 → 288 → 4, retrained and re-verified (AUC ~1.00 on all heads, quantized accuracy ≥ 99.7%).</li>
+      <li><b>6 new checks</b> — layout tables, missing canonical URL, autoplaying media, generic "click here" link text, empty links/buttons, password-field autocomplete hints.</li>
+      <li><b>Everything from v2</b> — SRI & supply-chain checks, unsandboxed iframes, CLS, form labels, meta-refresh, scan history (localStorage) — plus all v1 checks.</li>
     </ul>
   </details>
 
   <p class="disclaimer">
     ⚠ Use this tool only on websites you own or have explicit permission to test. This is a passive, browser-side
     scanner — it fetches publicly reachable pages only and cannot replace a full penetration test.
-  </p>    <footer>BugHunter v2 · single-file scanner + embedded 2.37M-parameter AI · runs 100% in your browser</footer>
+  </p>    <footer>BugHunter v3 · single-file scanner + embedded 3.84M-parameter AI · runs 100% in your browser</footer>
 </div>
 
 <script>
 "use strict";
 
-const BH_VERSION = "2.0.0";
+const BH_VERSION = "3.0.0";
 
 /* ============================== helpers ============================== */
 
@@ -499,4 +499,24 @@ async function fetchWithStatus(url) {
   return null;
 }
 
-/* ============================== checks ===========================
+/* ============================== checks ============================== */
+
+const TECH_SIGNATURES = [
+  { name: "WordPress",  test: h => /wp-content|wp-includes|wp-json/i.test(h) },
+  { name: "React",      test: h => /data-reactroot|__NEXT_DATA__|react(-dom)?(\.min)?\.js|_reactListening/i.test(h) },
+  { name: "Next.js",    test: h => /__NEXT_DATA__|\/_next\//i.test(h) },
+  { name: "Vue.js",     test: h => /data-v-app|vue(\.runtime)?(\.min)?\.js|v-if=/i.test(h) },
+  { name: "Angular",    test: h => /ng-version|angular(\.min)?\.js/i.test(h) },
+  { name: "jQuery",     test: h => /jquery/i.test(h) },
+  { name: "Bootstrap",  test: h => /bootstrap(\.min)?\.(css|js)/i.test(h) },
+  { name: "Tailwind",   test: h => /tailwind/i.test(h) },
+  { name: "Laravel",    test: h => /name="csrf-token"|laravel_session|XSRF-TOKEN/i.test(h) },
+  { name: "Cloudflare", test: h => /cdn-cgi|cloudflare/i.test(h) },
+  { name: "Google Analytics", test: h => /google-analytics\.com|gtag\(/i.test(h) },
+  { name: "Google Fonts",    test: h => /fonts\.(googleapis|gstatic)\.com/i.test(h) },
+  { name: "Font Awesome",    test: h => /font-?awesome/i.test(h) },
+  { name: "PHP",       test: h => /\.php|PHPSESSID/i.test(h) },
+  { name: "Shopify",   test: h => /cdn\.shopify\.com|shopify/i.test(h) },
+  { name: "Wix",       test: h => /wix(static|site)/i.test(h) },
+  { name: "Squarespace", test: h => /squarespace/i.test(h) },
+  { name: "Drupal",    test: h => /drupal|sites\/default\/files/i.test(h) },
