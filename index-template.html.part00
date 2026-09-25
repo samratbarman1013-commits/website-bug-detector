@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BugHunter v3.5 — Website Bug & Vulnerability Detector</title>
+<title>BugHunter v4 — Website Bug & Vulnerability Detector</title>
 <style>
   :root {
     --bg: #0a0e14;
@@ -336,14 +336,39 @@
   .chat-typing span:nth-child(3) { animation-delay: .36s; }
   @keyframes typing { 0%, 100% { opacity: .25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
   @media (max-width: 640px) { .chat-panel { right: 12px; left: 12px; width: auto; } .chat-fab { right: 16px; bottom: 16px; } }
+
+  /* Thoughts view (v4) */
+  #thoughtsBox {
+    display: none; margin-top: 18px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,.3);
+  }
+  .thoughts-head {
+    display: flex; align-items: center; gap: 10px; padding: 14px 18px; cursor: pointer;
+    user-select: none; background: var(--card-2); border-bottom: 1px solid var(--border);
+  }
+  .thoughts-head:hover { background: #1a2436; }
+  .thoughts-head h3 { font-size: 13px; font-family: var(--mono); letter-spacing: 1px; color: var(--cyan); }
+  .thoughts-caret { color: var(--muted); font-size: 11px; transition: transform .2s; width: 12px; }
+  .thoughts-meta { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .thoughts-body {
+    max-height: 300px; overflow-y: auto; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .thought {
+    font-family: var(--mono); font-size: 12.8px; line-height: 1.7; color: #9fb0c8;
+    padding: 2px 0 2px 14px; border-left: 2px solid var(--border);
+    animation: fadeup .3s ease both;
+  }
+  .thought b { color: var(--text); font-weight: 600; }
+  .thought .th-step { color: var(--cyan); font-weight: 700; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header>
-    <div class="logo"><span class="bracket">[</span> BugHunter <span class="ver">v3.5</span> <span class="bracket">]</span><span class="cursor"></span></div>
-    <p class="tagline">Website bug & vulnerability detector — scans for real issues and shows you <b>exactly how to fix them</b>. Now with a <b>5.06M-parameter AI risk engine</b> and an offline assistant you can chat with.</p>
+    <div class="logo"><span class="bracket">[</span> BugHunter <span class="ver">v4</span> <span class="bracket">]</span><span class="cursor"></span></div>
+    <p class="tagline">Website bug & vulnerability detector — scans for real issues and shows you <b>exactly how to fix them</b>. Now with a <b>7.02M-parameter AI risk engine</b>, an offline chat assistant, and a live <b>Thoughts</b> reasoning view.</p>
   </header>
 
   <div class="scanbar">
@@ -354,9 +379,18 @@
       </div>
       <button id="scanBtn">▶ RUN SCAN</button>
     </div>
-    <div class="hint">$ enter a URL — checks: reachability · HTTPS/TLS · security headers · sensitive file exposure · outdated libraries · mixed content · SEO & HTML quality · AI risk model (5M params)</div>
+    <div class="hint">$ enter a URL — checks: reachability · HTTPS/TLS · security headers · sensitive file exposure · outdated libraries · mixed content · SEO & HTML quality · AI risk model (7M params) · live Thoughts view</div>
     <div id="terminal"></div>
     <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <div id="thoughtsBox">
+    <div class="thoughts-head" id="thoughtsHead">
+      <span class="thoughts-caret" id="thoughtsCaret">▼</span>
+      <h3>◆ Thoughts</h3>
+      <span class="thoughts-meta" id="thoughtsMeta">live reasoning trace</span>
+    </div>
+    <div class="thoughts-body" id="thoughtsBody"></div>
   </div>
 
   <div class="history" id="historyBox">
@@ -396,14 +430,14 @@
     <div class="ai-card">
       <div class="ai-head">
         <h3>AI Risk Analysis</h3>
-        <span class="ai-badge">5.06M-parameter neural network · v3.5 · int8-quantized · runs locally</span>
+        <span class="ai-badge">7.02M-parameter neural network · v4 · int8-quantized · runs locally</span>
       </div>
       <div id="aiBars"></div>
       <div class="ai-sig-title">Top contributing signals</div>
       <div class="ai-chips" id="aiSignals"></div>
       <div class="ai-note">
-        The AI layer is a 5,055,484-parameter multi-label neural network (v3.5 architecture: 2,560 hashed
-        bag-of-tokens + 48 engineered features → 1440 → 720 → 360 → 4 outputs) trained offline by distilling
+        The AI layer is a 7,018,249-parameter multi-label neural network (v4 architecture: 2,560 hashed
+        bag-of-tokens + 48 engineered features → 1860 → 930 → 465 → 4 outputs) trained offline by distilling
         expert security heuristics into the network, then int8-quantized and embedded in this page. Inference runs 100%
         locally — no data leaves your browser. It complements, and does not replace, the rule-based findings.
       </div>
@@ -413,18 +447,18 @@
   <div id="findings"></div>
 
   <details class="whatsnew">
-    <summary>◆ What's new in v3.5</summary>
+    <summary>◆ What's new in v4</summary>
     <ul>
-      <li><b>AI risk engine — 5,055,484 parameters</b> (3.84M in v3): 2608 → 1440 → 720 → 360 → 4, retrained and re-verified (AUC ~1.00 on all heads, quantized accuracy ≥ 99.6%).</li>
-      <li><b>Offline chat assistant</b> — click the 💬 button and ask about your scan, any finding, or web security topics (CSP, SRI, HSTS…). Rule-based, runs inside this page, nothing is sent anywhere.</li>
-      <li><b>Everything from v3, v2 and v1</b> — 30+ checks, scan history, saliency explanations, JSON reports.</li>
+      <li><b>AI risk engine — 7,018,249 parameters</b> (5.06M in v3.5): 2608 → 1860 → 930 → 465 → 4, retrained and re-verified (AUC 1.00 on all four heads, quantized accuracy ≥ 99.7%).</li>
+      <li><b>“Thoughts” view</b> — a live reasoning trace beside the scan: watch what the scanner checks, what it finds at each step, how the AI's verdict forms, and how the final score is weighed. Click the <b>◆ Thoughts</b> header to fold it away.</li>
+      <li><b>Everything from v3.5</b> — offline chat assistant, 30+ checks, scan history, saliency explanations, JSON reports.</li>
     </ul>
   </details>
 
   <p class="disclaimer">
     ⚠ Use this tool only on websites you own or have explicit permission to test. This is a passive, browser-side
     scanner — it fetches publicly reachable pages only and cannot replace a full penetration test.
-  </p>    <footer>BugHunter v3.5 · single-file scanner + embedded 5.06M-parameter AI + offline assistant · runs 100% in your browser</footer>
+  </p>    <footer>BugHunter v4 · single-file scanner + embedded 7.02M-parameter AI + offline assistant + Thoughts view · runs 100% in your browser</footer>
 </div>
 
 <button class="chat-fab" id="chatFab" title="Ask BugHunter">💬</button>
@@ -444,7 +478,7 @@
 <script>
 "use strict";
 
-const BH_VERSION = "3.5.0";
+const BH_VERSION = "4.0.0";
 
 /* ============================== helpers ============================== */
 
@@ -598,4 +632,5 @@ function checkSecurityHeaders(headers, isHttps) {
       "Without CSP the browser allows scripts from anywhere, which makes XSS far more damaging.",
       "Add a Content-Security-Policy header on your web server / CDN.",
       'Content-Security-Policy: default-src \'self\'; script-src \'self\'; object-src \'none\'; frame-ancestors \'self\'; base-uri \'self\';'],
-    ["strict-transport-security", "med
+    ["strict-transport-security", "medium", "No Strict-Transport-Security (HSTS) header",
+     
