@@ -1,23 +1,4 @@
-hen corsproxy (its status mirrors the target's).
-async function fetchWithStatus(url) {
-  try {
-    const r = await withTimeout(() =>
-      fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url), { cache: "no-store" }), 18000);
-    const j = await r.json();
-    if (j && j.status) {
-      return { code: j.status.http_code, body: j.contents || "" };
-    }
-  } catch (e) {}
-  try {
-    const r = await withTimeout(() =>
-      fetch("https://corsproxy.io/?url=" + encodeURIComponent(url), { cache: "no-store" }), 15000);
-    const body = await r.text();
-    return { code: r.status, body: body };
-  } catch (e) {}
-  return null;
-}
-
-/* ============================== checks ============================== */
+=== */
 
 const TECH_SIGNATURES = [
   { name: "WordPress",  test: h => /wp-content|wp-includes|wp-json/i.test(h) },
@@ -238,6 +219,110 @@ function checkHtml(html, pageUrl, isHttps) {
       "Heavy inline styling makes themes and redesigns painful and bloats the HTML.",
       "Move repeated styles into classes in a stylesheet.", null);
   }
+
+  /* ---- v2 checks: supply-chain, hardening, a11y, layout stability ---- */
+  checkV2(doc, html);
+}
+
+/* ============================== v2 checks ============================== */
+
+function checkV2(doc, html) {
+  /* external scripts without Subresource Integrity */
+  const extScripts = Array.from(doc.querySelectorAll("script[src]"))
+    .filter(s => /^(https?:)?\/\//i.test((s.getAttribute("src") || "").trim()));
+  const noSri = extScripts.filter(s => !(s.getAttribute("integrity") || "").trim());
+  if (noSri.length) {
+    addFinding("medium", noSri.length + " external script(s) without Subresource Integrity (SRI)", "Supply-chain risk",
+      "If the CDN or a dependency is compromised, arbitrary JavaScript runs on your site — real breaches have started exactly this way (e.g. the 2018 Ticketmaster skimmer).",
+      "Add an integrity hash plus crossorigin to every external <script> and <link>.",
+      '<script src="https://cdn.example.com/lib.js" integrity="sha384-<hash>" crossorigin="anonymous"><\/script>');
+  }
+
+  /* iframes without sandbox */
+  const bareIframes = Array.from(doc.querySelectorAll("iframe"))
+    .filter(f => !(f.getAttribute("sandbox") || "").trim());
+  if (bareIframes.length) {
+    addFinding("low", bareIframes.length + " iframe(s) without a sandbox attribute", "iframe hardening",
+      "Embedded frames run with full privileges (scripts, forms, popups). A compromised or malicious embed can mislead or attack your users.",
+      "Add a sandbox attribute with only the permissions the embed actually needs.",
+      '<iframe src="https://player.example.com" sandbox="allow-scripts" title="Video"><\/iframe>');
+  }
+
+  /* javascript: links */
+  const jsLinks = Array.from(doc.querySelectorAll("a[href]"))
+    .filter(a => /^\s*javascript\s*:/i.test(a.getAttribute("href") || ""));
+  if (jsLinks.length) {
+    addFinding("medium", jsLinks.length + " javascript: link(s)", "Fragile / CSP-hostile pattern",
+      "javascript: URLs break under any Content-Security-Policy, don't work with middle-click or open-in-new-tab, and are a classic XSS vector when built from untrusted strings.",
+      "Attach real event listeners instead of javascript: URLs.",
+      '<!-- old --> <a href="javascript:doThing()">Go</a>\n<!-- new --> <a href="#" id="do-thing">Go</a>\n<script>document.getElementById("do-thing").addEventListener("click", doThing);<\/script>');
+  }
+
+  /* duplicate DOM ids */
+  const seenIds = {};
+  let dupIds = 0;
+  doc.querySelectorAll("[id]").forEach(el => {
+    if (!el.id) return;
+    seenIds[el.id] = (seenIds[el.id] || 0) + 1;
+    if (seenIds[el.id] === 2) dupIds++;
+  });
+  if (dupIds) {
+    addFinding("low", dupIds + " duplicate id(s) in the DOM", "HTML bug",
+      "getElementById and #id selectors silently target only the FIRST match, so labels, anchor links and scripts act on the wrong node.",
+      "Make every id unique; use classes for repeated elements.",
+      '<!-- old --> <input id="email"> ... <input id="email">\n<!-- new --> <input id="billing-email"> ... <input id="shipping-email">');
+  }
+
+  /* images without intrinsic size (layout shift) */
+  const imgsNoSize = Array.from(doc.querySelectorAll("img"))
+    .filter(i => !i.getAttribute("width") || !i.getAttribute("height"));
+  if (imgsNoSize.length) {
+    addFinding("low", imgsNoSize.length + " image(s) without width/height attributes", "Layout stability (CLS)",
+      "The browser can't reserve space, so the page jumps while images load — a Core Web Vitals penalty on mobile.",
+      "Set width and height (or a CSS aspect-ratio) on every <img>.",
+      '<img src="hero.jpg" width="1200" height="630" alt="Product overview">');
+  }
+
+  /* form controls without labels */
+  const unlabeled = Array.from(doc.querySelectorAll(
+    'input:not([type=hidden i]):not([type=submit i]):not([type=button i]):not([type=reset i]):not([type=image i]), select, textarea'))
+    .filter(el => {
+      const id = el.getAttribute("id");
+      let labelled = el.closest("label") || el.getAttribute("aria-label") ||
+                    el.getAttribute("aria-labelledby") || el.getAttribute("title");
+      if (!labelled && id) {
+        try { labelled = doc.querySelector('label[for="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]'); } catch (e) {}
+      }
+      return !labelled;
+    });
+  if (unlabeled.length) {
+    addFinding("medium", unlabeled.length + " form control(s) without a label", "Accessibility bug (WCAG)",
+      "Screen readers announce an unlabeled input as just 'edit text', so users can't tell what to type. Search engines also demote pages that fail basic accessibility.",
+      "Give every input, select and textarea an associated <label for=…> — or at minimum an aria-label.",
+      '<label for="email">Email address</label>\n<input type="email" id="email" name="email">');
+  }
+
+  /* meta refresh */
+  const mr = doc.querySelector('meta[http-equiv="refresh" i]');
+  if (mr) {
+    const c = (mr.getAttribute("content") || "").trim();
+    const m0 = /^\s*([0-9.]+)/.exec(c);
+    const secs = m0 ? parseFloat(m0[1]) : NaN;
+    if (isNaN(secs) || secs <= 10) {
+      addFinding("low", "Meta refresh redirect (" + (isNaN(secs) ? "no delay" : secs + "s") + ")", "Bad practice",
+        "Instant meta refreshes confuse back-button navigation, break some screen readers, and are treated as a redirect hack by some crawlers.",
+        "Do redirects server-side instead of inside the page.",
+        "# nginx\nlocation /old { return 301 /new; }");
+    }
+  }
+
+  /* excessive inline event handlers */
+  const inlineHandlers = (html.match(/\son[a-z]+\s*=\s*["']/gi) || []).length;
+  if (inlineHandlers > 15) {
+    addFinding("low", inlineHandlers + " inline event handler attributes", "Code quality (CSP-hostile)",
+      "Inline on* handlers block a strict Content-Security-Policy and mix behaviour into markup, making refactors error-prone.",
+      "Attach listeners with addEventListener from a script file.", null);
+  }
 }
 
 async function checkSensitiveFiles(base) {
@@ -311,47 +396,4 @@ async function runScan(rawUrl) {
 
   /* 1. reachability + TLS */
   log("$ bughunter scan " + host, "info");
-  log("[*] Resolving and probing https://" + host + " …", "info");
-  const httpsOk = await probeReachable(httpsUrl);
-  let httpOk = false;
-  if (httpsOk) log("[+] HTTPS reachable — TLS working", "ok");
-  else {
-    log("[!] HTTPS unreachable, testing plain HTTP …", "warn");
-    httpOk = await probeReachable(httpUrl);
-  }
-  setProgress(20);
-
-  let finalUrl, isHttps;
-  if (httpsOk) { finalUrl = httpsUrl; isHttps = true; }
-  else if (httpOk) {
-    finalUrl = httpUrl; isHttps = false;
-    addFinding("high", "Site does not support HTTPS", "No TLS — everything readable in transit",
-      "All traffic (including any logins) travels unencrypted and can be read or modified by anyone on the network path.",
-      "Install a free TLS certificate (Let's Encrypt) and redirect HTTP to HTTPS.",
-      "certbot --nginx -d " + host);
-  } else {
-    log("[-] Host unreachable over HTTPS and HTTP", "err");
-    log("[-] Scan aborted. Check the domain / your connection.", "err");
-    setProgress(100);
-    $("scanBtn").disabled = false;
-    $("scanBtn").textContent = "▶ RUN SCAN";
-    TERM.style.display = "block";
-    return;
-  }
-  log("[*] Fetching page source for analysis …", "info");
-  setProgress(35);
-
-  /* 2. page source */
-  const page = await fetchPage(finalUrl);
-  if (!page) {
-    log("[-] Could not retrieve page source (site or proxies unreachable)", "err");
-    addFinding("info", "Page source could not be fetched", "Scan limitation",
-      "The HTML could not be retrieved from this browser (network or CORS proxy limits), so the deep content analysis was skipped.",
-      "Try again, or run a server-side scan for full results.", null);
-  } else {
-    log("[+] Retrieved " + page.html.length.toLocaleString() + " bytes of HTML" + (page.via !== "direct" ? " (via proxy)" : ""), "ok");
-  }
-  setProgress(50);
-
-  /* 3. headers */
-  if (page && page
+  log("[*] Resolving and probing https://"
