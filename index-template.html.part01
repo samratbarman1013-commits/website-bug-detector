@@ -1,24 +1,3 @@
-=== */
-
-const TECH_SIGNATURES = [
-  { name: "WordPress",  test: h => /wp-content|wp-includes|wp-json/i.test(h) },
-  { name: "React",      test: h => /data-reactroot|__NEXT_DATA__|react(-dom)?(\.min)?\.js|_reactListening/i.test(h) },
-  { name: "Next.js",    test: h => /__NEXT_DATA__|\/_next\//i.test(h) },
-  { name: "Vue.js",     test: h => /data-v-app|vue(\.runtime)?(\.min)?\.js|v-if=/i.test(h) },
-  { name: "Angular",    test: h => /ng-version|angular(\.min)?\.js/i.test(h) },
-  { name: "jQuery",     test: h => /jquery/i.test(h) },
-  { name: "Bootstrap",  test: h => /bootstrap(\.min)?\.(css|js)/i.test(h) },
-  { name: "Tailwind",   test: h => /tailwind/i.test(h) },
-  { name: "Laravel",    test: h => /name="csrf-token"|laravel_session|XSRF-TOKEN/i.test(h) },
-  { name: "Cloudflare", test: h => /cdn-cgi|cloudflare/i.test(h) },
-  { name: "Google Analytics", test: h => /google-analytics\.com|gtag\(/i.test(h) },
-  { name: "Google Fonts",    test: h => /fonts\.(googleapis|gstatic)\.com/i.test(h) },
-  { name: "Font Awesome",    test: h => /font-?awesome/i.test(h) },
-  { name: "PHP",       test: h => /\.php|PHPSESSID/i.test(h) },
-  { name: "Shopify",   test: h => /cdn\.shopify\.com|shopify/i.test(h) },
-  { name: "Wix",       test: h => /wix(static|site)/i.test(h) },
-  { name: "Squarespace", test: h => /squarespace/i.test(h) },
-  { name: "Drupal",    test: h => /drupal|sites\/default\/files/i.test(h) },
   { name: "Nuxt",      test: h => /__nuxt|nuxt/i.test(h) },
   { name: "Svelte",    test: h => /svelte/i.test(h) },
 ];
@@ -222,6 +201,9 @@ function checkHtml(html, pageUrl, isHttps) {
 
   /* ---- v2 checks: supply-chain, hardening, a11y, layout stability ---- */
   checkV2(doc, html);
+
+  /* ---- v3 checks: layout, SEO, media, link quality ---- */
+  checkV3(doc, html);
 }
 
 /* ============================== v2 checks ============================== */
@@ -325,6 +307,72 @@ function checkV2(doc, html) {
   }
 }
 
+/* ============================== v3 checks ============================== */
+
+function checkV3(doc, html) {
+  /* tables used for layout (no header cells) */
+  const layoutTables = Array.from(doc.querySelectorAll("table"))
+    .filter(t => !t.querySelector("th") && t.querySelectorAll("tr").length > 3);
+  if (layoutTables.length) {
+    addFinding("low", layoutTables.length + " table(s) look like page layout, not data", "Legacy layout",
+      "Tables without header cells are usually holding the page together instead of displaying data — they break screen readers and responsive design, and scream 'built in 2005'.",
+      "Replace layout tables with CSS flexbox or grid; keep <table> only for real tabular data (with <th> headers).",
+      '.layout { display: grid; grid-template-columns: 220px 1fr; gap: 16px; }\n<div class="layout">\n  <nav>…</nav>\n  <main>…</main>\n</div>');
+  }
+
+  /* missing canonical URL */
+  if (!doc.querySelector('link[rel="canonical" i]')) {
+    addFinding("low", "No canonical URL declared", "SEO (duplicate content)",
+      "Without rel=canonical, www vs non-www, http vs https and query-string variants of the same page can each get indexed separately, splitting your ranking across duplicates.",
+      "Declare the preferred URL of every page in <head>.",
+      '<link rel="canonical" href="https://example.com/page">');
+  }
+
+  /* autoplaying media */
+  const autoplay = doc.querySelectorAll("video[autoplay], audio[autoplay]").length;
+  if (autoplay) {
+    addFinding("low", autoplay + " autoplaying media element(s)", "Accessibility & UX",
+      "Auto-playing audio/video violates WCAG 2.2 (users must control playback), is blocked or muted by many browsers anyway, and is one of the fastest ways to lose a visitor.",
+      "Remove autoplay, or make the video start muted and paused with visible controls.",
+      '<video src="intro.mp4" controls muted playsinline></video>');
+  }
+
+  /* generic link text */
+  const GENERIC = ["click here", "here", "read more", "learn more", "more", "this link", "go", "link", "details", "continue", "click"];
+  const badLinks = Array.from(doc.querySelectorAll("a"))
+    .filter(a => GENERIC.includes((a.textContent || "").trim().toLowerCase()));
+  if (badLinks.length) {
+    addFinding("low", badLinks.length + ' generic link text(s) ("click here", "read more", …)', "SEO & accessibility",
+      "Screen-reader users navigate by jumping link-to-link, so 'click here' tells them nothing — and search engines use link text as a ranking signal for the target page.",
+      "Make link text describe the destination.",
+      '<!-- old --> <a href="/pricing">read more</a>\n<!-- new --> <a href="/pricing">See pricing plans</a>');
+  }
+
+  /* empty links / buttons with no accessible name */
+  const empties = Array.from(doc.querySelectorAll("a, button"))
+    .filter(el => {
+      if ((el.textContent || "").trim()) return false;
+      if (el.getAttribute("aria-label") || el.getAttribute("title")) return false;
+      return !el.querySelector("img[alt]");
+    });
+  if (empties.length) {
+    addFinding("medium", empties.length + " empty link(s)/button(s) with no accessible name", "Accessibility bug (WCAG)",
+      "Controls with no text and no aria-label are invisible to screen readers and confusing for everyone — an icon-only button still needs a name.",
+      "Give every control a text label, or an aria-label when it is icon-only.",
+      '<button aria-label="Close dialog">✕</button>');
+  }
+
+  /* password fields without autocomplete hints */
+  const pwNoAuto = Array.from(doc.querySelectorAll('input[type="password" i]'))
+    .filter(i => !(i.getAttribute("autocomplete") || "").trim());
+  if (pwNoAuto.length) {
+    addFinding("low", pwNoAuto.length + " password field(s) without an autocomplete hint", "Login UX & security",
+      "Without autocomplete hints, password managers guess wrong or skip the field entirely — pushing users toward weak, reused passwords.",
+      "Mark login fields autocomplete=\"current-password\" and signup fields autocomplete=\"new-password\".",
+      '<input type="password" name="pw" autocomplete="current-password">');
+  }
+}
+
 async function checkSensitiveFiles(base) {
   const checks = [
     { path: "/.env", marker: /APP_KEY|DB_PASSWORD|DATABASE_URL|API_KEY|SECRET/i,
@@ -356,44 +404,4 @@ async function checkRobotsSitemap(base) {
   } else if (/disallow:\s*\/\s*$/im.test(robots.body) && /disallow:\s*\/\s*$/im.test(robots.body)) {
     // entire site disallowed — only flag when literally only that
   }
-  if (robots && robots.code === 200 && !/sitemap:/i.test(robots.body)) {
-    const sm = await fetchWithStatus(base + "/sitemap.xml");
-    if (!sm || sm.code !== 200) {
-      addFinding("info", "No sitemap found", "SEO",
-        "Sitemaps help search engines discover all your pages.",
-        "Generate a sitemap and reference it in robots.txt.",
-        "Sitemap: https://example.com/sitemap.xml");
-    }
-  }
-}
-
-/* ============================== orchestration ============================== */
-
-async function runScan(rawUrl) {
-  FINDINGS = [];
-  TECH = [];
-  window.__AI = null;
-  TERM.innerHTML = "";
-  $("findings").innerHTML = "";
-  $("findings").style.display = "none";
-  $("summary").style.display = "none";
-  $("techBox").style.display = "none";
-  TERM.style.display = "block";
-  document.querySelector(".progress-track").style.display = "block";
-  $("scanBtn").disabled = true;
-  $("scanBtn").textContent = "SCANNING…";
-
-  let host = rawUrl.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
-  if (!host || !/\./.test(host)) {
-    alert("Please enter a valid domain, e.g. example.com");
-    $("scanBtn").disabled = false;
-    $("scanBtn").textContent = "▶ RUN SCAN";
-    return;
-  }
-  const httpsUrl = "https://" + host + "/";
-  const httpUrl  = "http://" + host + "/";
-  setProgress(5);
-
-  /* 1. reachability + TLS */
-  log("$ bughunter scan " + host, "info");
-  log("[*] Resolving and probing https://" 
+  if (robots 
