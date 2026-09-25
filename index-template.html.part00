@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BugHunter v3 — Website Bug & Vulnerability Detector</title>
+<title>BugHunter v3.5 — Website Bug & Vulnerability Detector</title>
 <style>
   :root {
     --bg: #0a0e14;
@@ -283,14 +283,67 @@
   .whatsnew li { margin-bottom: 5px; }
   .whatsnew b { color: var(--text); }
   footer { text-align: center; color: #4a5a72; font-size: 12px; margin-top: 26px; font-family: var(--mono); }
+
+  /* Professional polish (v3.5) */
+  header::after {
+    content: ""; display: block; height: 2px; width: 200px; margin: 24px auto 0;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent); border-radius: 2px;
+  }
+  .wrap { animation: fadeup .45s ease both; }
+  @keyframes fadeup { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .finding { box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .finding:hover { border-color: #2e4260; box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+  .score-card { box-shadow: 0 12px 44px rgba(0,0,0,.35); }
+
+  /* Assistant chat (v3.5) */
+  .chat-fab {
+    position: fixed; right: 26px; bottom: 26px; width: 58px; height: 58px; border-radius: 50%;
+    background: linear-gradient(135deg, #16a34a, #0d9488); border: none; color: #fff; font-size: 23px;
+    cursor: pointer; box-shadow: 0 10px 30px rgba(13,148,136,.45); z-index: 60;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .chat-fab:hover { transform: translateY(-2px) scale(1.05); }
+  .chat-panel {
+    position: fixed; right: 26px; bottom: 98px; width: 384px; max-width: calc(100vw - 32px);
+    height: 540px; max-height: calc(100vh - 130px); background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; display: none; flex-direction: column; overflow: hidden; z-index: 61;
+    box-shadow: 0 24px 70px rgba(0,0,0,.55);
+  }
+  .chat-panel.open { display: flex; }
+  .chat-head {
+    padding: 14px 18px; background: var(--card-2); border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;
+  }
+  .chat-head b { font-family: var(--mono); font-size: 14px; letter-spacing: .5px; display: block; }
+  .chat-head small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; line-height: 1.4; }
+  .chat-close { background: none; border: none; color: var(--muted); font-size: 15px; cursor: pointer; padding: 2px 4px; }
+  .chat-close:hover { color: var(--red); }
+  .chat-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .chat-msg { max-width: 88%; padding: 10px 14px; border-radius: 14px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+  .chat-msg.bot { background: var(--bg-2); border: 1px solid var(--border); border-bottom-left-radius: 4px; align-self: flex-start; }
+  .chat-msg.user { background: rgba(56,189,248,.12); border: 1px solid rgba(56,189,248,.3); border-bottom-right-radius: 4px; align-self: flex-end; }
+  .chat-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
+  .chat-chip { background: var(--bg-2); border: 1px solid var(--border); color: var(--muted); border-radius: 999px; font-size: 11.5px; font-family: var(--mono); padding: 5px 10px; cursor: pointer; transition: border .15s, color .15s; }
+  .chat-chip:hover { border-color: var(--cyan); color: var(--text); }
+  .chat-input-row { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border); background: var(--card-2); }
+  .chat-input-row input { flex: 1; background: var(--bg-2); border: 1px solid var(--border); border-radius: 9px; color: var(--text); font-size: 13.5px; padding: 10px 12px; outline: none; font-family: var(--sans); transition: border .15s; }
+  .chat-input-row input:focus { border-color: var(--cyan); }
+  .chat-send { background: linear-gradient(135deg, #16a34a, #0d9488); border: none; color: #fff; border-radius: 9px; width: 44px; cursor: pointer; font-size: 15px; transition: transform .1s; }
+  .chat-send:hover { transform: translateY(-1px); }
+  .chat-typing { display: inline-flex; gap: 4px; align-items: center; }
+  .chat-typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: typing 1s infinite; }
+  .chat-typing span:nth-child(2) { animation-delay: .18s; }
+  .chat-typing span:nth-child(3) { animation-delay: .36s; }
+  @keyframes typing { 0%, 100% { opacity: .25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+  @media (max-width: 640px) { .chat-panel { right: 12px; left: 12px; width: auto; } .chat-fab { right: 16px; bottom: 16px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header>
-    <div class="logo"><span class="bracket">[</span> BugHunter <span class="ver">v3</span> <span class="bracket">]</span><span class="cursor"></span></div>
-    <p class="tagline">Website bug & vulnerability detector — scans for real issues and shows you <b>exactly how to fix them</b>. Now with a <b>3.8M-parameter AI risk engine</b>.</p>
+    <div class="logo"><span class="bracket">[</span> BugHunter <span class="ver">v3.5</span> <span class="bracket">]</span><span class="cursor"></span></div>
+    <p class="tagline">Website bug & vulnerability detector — scans for real issues and shows you <b>exactly how to fix them</b>. Now with a <b>5.06M-parameter AI risk engine</b> and an offline assistant you can chat with.</p>
   </header>
 
   <div class="scanbar">
@@ -301,7 +354,7 @@
       </div>
       <button id="scanBtn">▶ RUN SCAN</button>
     </div>
-    <div class="hint">$ enter a URL — checks: reachability · HTTPS/TLS · security headers · sensitive file exposure · outdated libraries · mixed content · SEO & HTML quality · AI risk model (3.8M params)</div>
+    <div class="hint">$ enter a URL — checks: reachability · HTTPS/TLS · security headers · sensitive file exposure · outdated libraries · mixed content · SEO & HTML quality · AI risk model (5M params)</div>
     <div id="terminal"></div>
     <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
   </div>
@@ -343,14 +396,14 @@
     <div class="ai-card">
       <div class="ai-head">
         <h3>AI Risk Analysis</h3>
-        <span class="ai-badge">3.84M-parameter neural network · v3 · int8-quantized · runs locally</span>
+        <span class="ai-badge">5.06M-parameter neural network · v3.5 · int8-quantized · runs locally</span>
       </div>
       <div id="aiBars"></div>
       <div class="ai-sig-title">Top contributing signals</div>
       <div class="ai-chips" id="aiSignals"></div>
       <div class="ai-note">
-        The AI layer is a 3,837,028-parameter multi-label neural network (v3 architecture: 2,560 hashed
-        bag-of-tokens + 48 engineered features → 1152 → 576 → 288 → 4 outputs) trained offline by distilling
+        The AI layer is a 5,055,484-parameter multi-label neural network (v3.5 architecture: 2,560 hashed
+        bag-of-tokens + 48 engineered features → 1440 → 720 → 360 → 4 outputs) trained offline by distilling
         expert security heuristics into the network, then int8-quantized and embedded in this page. Inference runs 100%
         locally — no data leaves your browser. It complements, and does not replace, the rule-based findings.
       </div>
@@ -360,24 +413,38 @@
   <div id="findings"></div>
 
   <details class="whatsnew">
-    <summary>◆ What's new in v3</summary>
+    <summary>◆ What's new in v3.5</summary>
     <ul>
-      <li><b>AI risk engine — 3,837,028 parameters</b> (2.37M in v2, 1.5M in v1): 2608 → 1152 → 576 → 288 → 4, retrained and re-verified (AUC ~1.00 on all heads, quantized accuracy ≥ 99.7%).</li>
-      <li><b>6 new checks</b> — layout tables, missing canonical URL, autoplaying media, generic "click here" link text, empty links/buttons, password-field autocomplete hints.</li>
-      <li><b>Everything from v2</b> — SRI & supply-chain checks, unsandboxed iframes, CLS, form labels, meta-refresh, scan history (localStorage) — plus all v1 checks.</li>
+      <li><b>AI risk engine — 5,055,484 parameters</b> (3.84M in v3): 2608 → 1440 → 720 → 360 → 4, retrained and re-verified (AUC ~1.00 on all heads, quantized accuracy ≥ 99.6%).</li>
+      <li><b>Offline chat assistant</b> — click the 💬 button and ask about your scan, any finding, or web security topics (CSP, SRI, HSTS…). Rule-based, runs inside this page, nothing is sent anywhere.</li>
+      <li><b>Everything from v3, v2 and v1</b> — 30+ checks, scan history, saliency explanations, JSON reports.</li>
     </ul>
   </details>
 
   <p class="disclaimer">
     ⚠ Use this tool only on websites you own or have explicit permission to test. This is a passive, browser-side
     scanner — it fetches publicly reachable pages only and cannot replace a full penetration test.
-  </p>    <footer>BugHunter v3 · single-file scanner + embedded 3.84M-parameter AI · runs 100% in your browser</footer>
+  </p>    <footer>BugHunter v3.5 · single-file scanner + embedded 5.06M-parameter AI + offline assistant · runs 100% in your browser</footer>
+</div>
+
+<button class="chat-fab" id="chatFab" title="Ask BugHunter">💬</button>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <div><b>◆ BugHunter Assistant</b><small>runs 100% offline inside this page — nothing is sent anywhere</small></div>
+    <button class="chat-close" id="chatClose" title="Close">✕</button>
+  </div>
+  <div class="chat-body" id="chatBody"></div>
+  <div class="chat-chips" id="chatChips"></div>
+  <div class="chat-input-row">
+    <input id="chatInput" type="text" placeholder="Ask about your scan, a finding, or security…" autocomplete="off">
+    <button class="chat-send" id="chatSend" title="Send">➤</button>
+  </div>
 </div>
 
 <script>
 "use strict";
 
-const BH_VERSION = "3.0.0";
+const BH_VERSION = "3.5.0";
 
 /* ============================== helpers ============================== */
 
@@ -520,3 +587,15 @@ const TECH_SIGNATURES = [
   { name: "Wix",       test: h => /wix(static|site)/i.test(h) },
   { name: "Squarespace", test: h => /squarespace/i.test(h) },
   { name: "Drupal",    test: h => /drupal|sites\/default\/files/i.test(h) },
+  { name: "Nuxt",      test: h => /__nuxt|nuxt/i.test(h) },
+  { name: "Svelte",    test: h => /svelte/i.test(h) },
+];
+
+function checkSecurityHeaders(headers, isHttps) {
+  const h = headers;
+  const wanted = [
+    ["content-security-policy", "high", "No Content-Security-Policy header",
+      "Without CSP the browser allows scripts from anywhere, which makes XSS far more damaging.",
+      "Add a Content-Security-Policy header on your web server / CDN.",
+      'Content-Security-Policy: default-src \'self\'; script-src \'self\'; object-src \'none\'; frame-ancestors \'self\'; base-uri \'self\';'],
+    ["strict-transport-security", "med
