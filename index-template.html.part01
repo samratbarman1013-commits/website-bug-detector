@@ -1,63 +1,4 @@
- "Without HSTS a user can be tricked into visiting the site over plain HTTP (SSL-strip attacks).",
-      "Enable HSTS once you are sure HTTPS works for all subdomains.",
-      'Strict-Transport-Security: max-age=31536000; includeSubDomains'],
-    ["x-frame-options", "low", "No X-Frame-Options / frame-ancestors protection",
-      "The site can be embedded in an iframe, enabling clickjacking attacks (the modern CSP frame-ancestors directive also fixes this).",
-      "Send X-Frame-Options, or better, the CSP frame-ancestors directive.",
-      'X-Frame-Options: DENY'],
-    ["x-content-type-options", "low", "No X-Content-Type-Options header",
-      "Browsers may MIME-sniff responses and execute an innocent file as script.",
-      "Stop MIME sniffing with one header.",
-      'X-Content-Type-Options: nosniff'],
-    ["referrer-policy", "low", "No Referrer-Policy header",
-      "Full URLs (including query strings with tokens/session IDs) can leak to third-party sites via the Referer header.",
-      "Set a restrictive Referrer-Policy.",
-      'Referrer-Policy: strict-origin-when-cross-origin'],
-  ];
-  for (const [key, sev, title, desc, fix, code] of wanted) {
-    if (isHttps === false && key === "strict-transport-security") continue; // pointless without TLS
-    if (!h[key]) addFinding(sev, title, "Missing security header", desc, fix, code);
-  }
-}
 
-function checkHtml(html, pageUrl, isHttps) {
-  const doc = new DOMParser().parseFromString(html, "text/html");
-
-  /* ---- technology detection ---- */
-  for (const t of TECH_SIGNATURES) {
-    try { if (t.test(html)) TECH.push(t.name); } catch (e) {}
-  }
-
-  /* ---- jQuery version ---- */
-  const jq = html.match(/jquery[.\-\/]?(\d+)\.(\d+)(\.(\d+))?/i);
-  if (jq && parseInt(jq[1], 10) < 3) {
-    addFinding("high", "Outdated jQuery " + jq[1] + "." + jq[2] + " detected",
-      "Known vulnerabilities",
-      "jQuery before 3.x (especially 1.x) has publicly known XSS and prototype-pollution vulnerabilities (e.g. CVE-2020-11022/11023 in <3.5). Attackers actively scan for old jQuery.",
-      "Upgrade to the latest jQuery 3.x. If you cannot, at minimum upgrade to 3.5.0+.",
-      '<script src="https://code.jquery.com/jquery-3.7.1.min.js"><\/script>');
-  }
-
-  /* ---- title ---- */
-  const title = (doc.querySelector("title") && doc.querySelector("title").textContent.trim()) || "";
-  if (!title) {
-    addFinding("medium", "Missing or empty <title> tag", "SEO & usability",
-      "The page title is what shows in search results and browser tabs. An empty title hurts ranking and looks broken.",
-      "Add a unique, descriptive title (50–60 characters).",
-      "<title>Acme Tools — Free Online PDF Editor</title>");
-  } else if (title.length > 65) {
-    addFinding("low", "Page title is too long (" + title.length + " chars)", "SEO",
-      "Google truncates titles around 60 characters in search results.",
-      "Keep titles between 50 and 60 characters.", null);
-  }
-
-  /* ---- meta description ---- */
-  const md = doc.querySelector('meta[name="description" i]');
-  if (!md || !md.getAttribute("content") || !md.getAttribute("content").trim()) {
-    addFinding("medium", "Missing meta description", "SEO",
-      "Search engines show the meta description under your link. Without it, Google invents a snippet.",
-      "Add a compelling 120–160 character description.",
-      '<meta name="description" content="Fix bugs and detect vulnerabilities in any website with BugHunter, a free browser-based scanner.">');
   } else if (md.getAttribute("content").trim().length > 165) {
     addFinding("low", "Meta description too long (" + md.getAttribute("content").trim().length + " chars)", "SEO",
       "Descriptions get truncated after ~160 characters.",
@@ -504,14 +445,15 @@ async function runScan(rawUrl) {
     const cats = {};
     for (const f of FINDINGS) cats[f.subtitle] = (cats[f.subtitle] || 0) + 1;
     const topCat = Object.keys(cats).sort((a, b) => cats[b] - cats[a])[0];
-    thought("RULES", "Rule engine finished: " + (FINDINGS.length ? Object.keys(c).map(s => c[s] + " " + s).join(", ") + (topCat ? ". Dominant theme: " + topCat + "." : ".") : "no issues found — clean markup."));
+    const topF = ["critical", "high", "medium", "low"].flatMap(s => FINDINGS.filter(f => f.sev === s)).slice(0, 3);
+    thought("RULES", "Rule engine finished: " + (FINDINGS.length ? Object.keys(c).map(s => c[s] + " " + s).join(", ") + (topCat ? ". Dominant theme: " + topCat + "." : ".") : "no issues found — clean markup.") + (topF.length ? " The most important: " + topF.map(f => "“" + f.title + "”").join(", ") + "." : "") + (TECH.length ? " Stack detected: " + TECH.slice(0, 5).join(", ") + "." : ""));
   }
   /* 4b. AI risk model */
-  log("[*] Running embedded AI risk model (" + AI_MODEL.params.toLocaleString() + " parameters, in-browser inference) …", "info");
+  log("[*] Running embedded transformer AI risk model (" + AI_MODEL.params.toLocaleString() + " parameters, 6-layer self-attention, in-browser inference) …", "info");
   try { runAiAnalysis(finalUrl, page); } catch (e) { log("[-] AI analysis skipped: " + e.message, "warn"); }
   if (window.__AI) {
     const P = window.__AI.probabilities;
-    thought("AI", "Neural net verdict: phishing " + Math.round((P["Phishing / scam"] || 0) * 100) + "%, malware " + Math.round((P["Malware / compromise"] || 0) * 100) + "%, outdated " + Math.round((P["Outdated & insecure stack"] || 0) * 100) + "%, poor quality " + Math.round((P["Poor quality / SEO"] || 0) * 100) + "%. Strongest signals: " + (window.__AI.signals.slice(0, 4).join(", ") || "n/a") + ".");
+    thought("AI", "Transformer verdict: phishing " + Math.round((P["Phishing / scam"] || 0) * 100) + "%, malware " + Math.round((P["Malware / compromise"] || 0) * 100) + "%, outdated " + Math.round((P["Outdated & insecure stack"] || 0) * 100) + "%, poor quality " + Math.round((P["Poor quality / SEO"] || 0) * 100) + "%. Strongest signals: " + (window.__AI.signals.slice(0, 4).join(", ") || "n/a") + ".");
   }
   setProgress(75);
 
@@ -552,4 +494,203 @@ function setProgress(pct) {
 
 let THOUGHTS_N = 0;
 let THOUGHTS_OPEN = true;
-function though
+function thought(step, text) {
+  const body = $("thoughtsBody");
+  $("thoughtsBox").style.display = "block";
+  const d = document.createElement("div");
+  d.className = "thought";
+  d.innerHTML = '<span class="th-step">[' + step + ']</span> ' + esc(text);
+  body.appendChild(d);
+  body.scrollTop = body.scrollHeight;
+  THOUGHTS_N++;
+  $("thoughtsMeta").textContent = THOUGHTS_N + " thought" + (THOUGHTS_N === 1 ? "" : "s");
+}
+function setThoughtsOpen(o) {
+  THOUGHTS_OPEN = o;
+  $("thoughtsBody").style.display = o ? "flex" : "none";
+  $("thoughtsCaret").textContent = o ? "▼" : "▶";
+}
+$("thoughtsHead").addEventListener("click", () => setThoughtsOpen(!THOUGHTS_OPEN));
+
+/* ============================== rendering ============================== */
+
+const SEV_ORDER = ["critical", "high", "medium", "low", "info"];
+const SEV_LABEL = { critical: "CRITICAL", high: "HIGH", medium: "MEDIUM", low: "LOW", info: "INFO" };
+
+function scoreFromFindings() {
+  let s = 100;
+  for (const f of FINDINGS) {
+    if (f.sev === "critical") s -= 25;
+    else if (f.sev === "high") s -= 14;
+    else if (f.sev === "medium") s -= 7;
+    else if (f.sev === "low") s -= 3;
+  }
+  return Math.max(0, Math.min(100, s));
+}
+
+function renderReport(host, finalUrl) {
+  const score = scoreFromFindings();
+  const counts = {};
+  for (const f of FINDINGS) counts[f.sev] = (counts[f.sev] || 0) + 1;
+
+  /* gauge */
+  const arc = $("gaugeArc");
+  const C = 2 * Math.PI * 56;
+  arc.style.strokeDashoffset = C - (C * score / 100);
+  arc.setAttribute("stroke", score >= 80 ? "#34d399" : score >= 60 ? "#facc15" : score >= 40 ? "#fb923c" : "#f87171");
+  $("scoreVal").textContent = score;
+
+  $("targetUrl").textContent = "target: " + finalUrl;
+
+  /* pills */
+  const pillRow = $("pillRow");
+  pillRow.innerHTML = "";
+  SEV_ORDER.forEach(s => {
+    if (counts[s]) {
+      const p = document.createElement("span");
+      p.className = "pill " + s;
+      p.textContent = counts[s] + " " + SEV_LABEL[s];
+      pillRow.appendChild(p);
+    }
+  });
+  if (!FINDINGS.filter(f => f.sev !== "info").length) {
+    const p = document.createElement("span");
+    p.className = "pill pass";
+    p.textContent = "✓ NO ISSUES FOUND";
+    pillRow.appendChild(p);
+  }
+  $("summary").style.display = "block";
+
+  /* tech chips */
+  if (TECH.length) {
+    const chips = $("chips");
+    chips.innerHTML = "";
+    TECH.forEach(t => {
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.innerHTML = '<span class="dot"></span>' + esc(t);
+      chips.appendChild(c);
+    });
+    $("techBox").style.display = "block";
+  }
+
+  /* findings */
+  const cont = $("findings");
+  cont.innerHTML = "";
+  let rendered = 0;
+  SEV_ORDER.forEach(sev => {
+    const group = FINDINGS.filter(f => f.sev === sev);
+    if (!group.length) return;
+    const h = document.createElement("h3");
+    h.className = "section-title";
+    h.textContent = SEV_LABEL[sev] + " (" + group.length + ")";
+    cont.appendChild(h);
+    group.forEach(f => {
+      const div = document.createElement("div");
+      div.className = "finding";
+      const codeHtml = f.code
+        ? '<div class="fix-label">Fix</div>' + f.fix +
+          '<pre class="code"><button class="copy-btn">copy</button>' + esc(f.code) + "</pre>"
+        : '<div class="fix-label">Fix</div>' + f.fix;
+      div.innerHTML =
+        '<div class="finding-head">' +
+          '<span class="sev ' + f.sev + '">' + SEV_LABEL[f.sev] + '</span>' +
+          '<span class="finding-title">' + esc(f.title) + "<small>" + esc(f.subtitle) + "</small></span>" +
+          '<span class="chev">▶</span>' +
+        '</div>' +
+        '<div class="finding-body">' +
+          '<div class="desc">' + esc(f.desc) + "</div>" + codeHtml +
+        "</div>";
+      div.querySelector(".finding-head").addEventListener("click", () => div.classList.toggle("open"));
+      const cb = div.querySelector(".copy-btn");
+      if (cb) cb.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const txt = div.querySelector("pre.code").textContent.replace(/^copy$/, "").trim();
+        navigator.clipboard.writeText(txt).then(() => {
+          cb.textContent = "copied!";
+          setTimeout(() => cb.textContent = "copy", 1200);
+        }).catch(() => {});
+      });
+      cont.appendChild(div);
+      rendered++;
+    });
+  });
+  if (!rendered) {
+    cont.innerHTML = '<div class="no-issues">✓ Clean scan — no bugs or vulnerabilities detected.</div>';
+  }
+  cont.style.display = "block";
+
+  LAST_REPORT = {
+    tool: "BugHunter",
+    version: BH_VERSION,
+    scannedAt: new Date().toISOString(),
+    target: finalUrl,
+    score: score,
+    technologies: TECH,
+    ai: window.__AI || null,
+    findings: FINDINGS.map(f => ({ severity: f.sev, title: f.title, category: f.subtitle, problem: f.desc, fix: f.fix, code: f.code }))
+  };
+
+  saveHistory(finalUrl, score);
+}
+
+/* ============================== AI risk model ============================== */
+/* 8,269,972-parameter TRANSFORMER encoder (v4.5), int8-quantized, embedded below.
+   Input : 2560 hashed bag-of-tokens (FNV-1a) + 48 features -> 8 segments of 326
+   Model : token proj 326->336 (+CLS, learned positions), 6 pre-LN self-attention
+           layers (8 heads, d=336), FFN 336->1344->336 (ReLU), final LN on CLS ->
+           4 sigmoid heads.
+   Output: [phishing, malware, outdated, quality] probabilities. */
+
+const AI_MODEL = __MODEL_DATA__;
+
+const TR = {};
+(function aiInit() {
+  const b2i8 = (b64) => {
+    const bin = atob(b64);
+    const u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return new Int8Array(u.buffer);
+  };
+  const dq = (o) => {
+    const q = b2i8(o.w);
+    const W = new Float32Array(q.length);
+    for (let i = 0; i < q.length; i++) W[i] = q[i] * o.s;
+    return W;
+  };
+  const f32 = (a) => Float32Array.from(a);
+  TR.proj = dq(AI_MODEL.proj); TR.projB = f32(AI_MODEL.proj.b);
+  TR.cls = f32(AI_MODEL.cls);
+  TR.pos = f32([].concat.apply([], AI_MODEL.pos));
+  TR.blocks = AI_MODEL.blocks.map(b => ({
+    ln1g: f32(b.ln1.g), ln1b: f32(b.ln1.b),
+    qkv: dq(b.qkv), qkvB: f32(b.qkv.b),
+    out: dq(b.out), outB: f32(b.out.b),
+    ln2g: f32(b.ln2.g), ln2b: f32(b.ln2.b),
+    w1: dq(b.w1), b1: f32(b.w1.b),
+    w2: dq(b.w2), b2: f32(b.w2.b),
+  }));
+  TR.lnFg = f32(AI_MODEL.lnF.g); TR.lnFb = f32(AI_MODEL.lnF.b);
+  TR.head = dq(AI_MODEL.head); TR.headB = f32(AI_MODEL.head.b);
+  TR.SAL = AI_MODEL.sal.map(S => {
+    const q = b2i8(S.g);
+    const g = new Float32Array(q.length);
+    for (let i = 0; i < q.length; i++) g[i] = q[i] * S.s;
+    return g;
+  });
+})();
+
+/* LayerNorm: dst[doff..] = LN(src[soff..]) * g + b   (eps = 1e-5, matches training) */
+function aiLN(dst, doff, src, soff, g, b, D) {
+  let m = 0;
+  for (let i = 0; i < D; i++) m += src[soff + i];
+  m /= D;
+  let v = 0;
+  for (let i = 0; i < D; i++) { const d = src[soff + i] - m; v += d * d; }
+  v /= D;
+  const inv = 1 / Math.sqrt(v + 1e-5);
+  for (let i = 0; i < D; i++) dst[doff + i] = (src[soff + i] - m) * inv * g[i] + b[i];
+}
+
+function aiForward(x) {
+  const M = AI_MODEL, D = M.dModel, S = M.segs, SD = M.segDim, 
