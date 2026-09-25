@@ -531,7 +531,7 @@ function chatAnswer(qRaw) {
         ctx += " Transformer AI risk: phishing " + Math.round((P["Phishing / scam"] || 0) * 100) +
           "%, malware " + Math.round((P["Malware / compromise"] || 0) * 100) +
           "%, outdated " + Math.round((P["Outdated & insecure stack"] || 0) * 100) +
-          "%, poor quality " + Math.round((P["Poor quality / SEO"] || 0) * 100) + ".";
+          "%, poor quality " + Math.round((P["Poor quality / SEO"] || 0) * 100) + "%.";
       }
     } else {
       ctx = "The user has not scanned a site yet.";
