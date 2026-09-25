@@ -1,0 +1,357 @@
+hen corsproxy (its status mirrors the target's).
+async function fetchWithStatus(url) {
+  try {
+    const r = await withTimeout(() =>
+      fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url), { cache: "no-store" }), 18000);
+    const j = await r.json();
+    if (j && j.status) {
+      return { code: j.status.http_code, body: j.contents || "" };
+    }
+  } catch (e) {}
+  try {
+    const r = await withTimeout(() =>
+      fetch("https://corsproxy.io/?url=" + encodeURIComponent(url), { cache: "no-store" }), 15000);
+    const body = await r.text();
+    return { code: r.status, body: body };
+  } catch (e) {}
+  return null;
+}
+
+/* ============================= checks ============================= */
+
+const TECH_SIGNATURES = [
+  { name: "WordPress",  test: h => /wp-content|wp-includes|wp-json/i.test(h) },
+  { name: "React",      test: h => /data-reactroot__NEXT_DATA__|react(-dom)?(\.min)?\.js|_reactListening/i.test(h) },
+  { name: "Next.js",    test: h => /__NEXT_DATA__|\/_next\//i.test(h) },
+  { name: "Vue.js",     test: h => /data-v-app|vue(\.runtime)?(\.min)?\.js|v-if=/i.test(h) },
+  { name: "Angular",    test: h => /ng-version|angular(\.min)?\.js/i.test(h) },
+  { name: "jQuery",     test: h => /jquery/i.test(h) },
+  { name: "Bootstrap",  test: h => /bootstrap(\.min)?\.(css|js)/i.test(h) },
+  { name: "Tailwind",   test: h => /tailwind/i.test(h) },
+  { name: "Laravel",    test: h => /name="csrf-token"|laravel_session|XSRF-TOKEN/i.test(h) },
+  { name: "Cloudflare", test: h => /cdn-cgi|cloudflare/i.test(h) },
+  { name: "Google Analytics", test: h => /google-analytics\.com|gtag\(/i.test(h) },
+  { name: "Google Fonts",    test: h => /fonts\.(googleapis|gstatic)\.com/i.test(h) },
+  { name: "Font Awesome",    test: h => /font-?awesome/i.test(h) },
+  { name: "PHP",       test: h => /\.php|PHPSESSID/i.test(h) },
+  { name: "Shopify",   test: h => /cdn\.shopify\.com|shopify/i.test(h) },
+  { name: "Wix",       test: h => /wix(static|site)/i.test(h) },
+  { name: "Squarespace", test: h => /squarespace/i.test(h) },
+  { name: "Drupal",    test: h => /drupal|sites\/default\/files/i.test(h) },
+  { name: "Nuxt",      test: h => /__nuxt|nuxt/i.test(h) },
+  { name: "Svelte",    test: h => /svelte/i.test(h) },
+];
+
+function checkSecurityHeaders(headers, isHttps) {
+  const h = headers;
+  const wanted = [
+    ["content-security-policy", "high", "No Content-Security-Policy header",
+      "Without CSP the browser allows scripts from anywhere, which makes XSS far more damaging.",
+      "Add a Content-Security-Policy header on your web server / CDN.",
+      'Content-Security-Policy: default-src \'self\'; script-src \'self\'; object-src \'none\'; frame-ancestors \'self\'; base-uri \'self\';'],
+    ["strict-transport-security", "medium", "No Strict-Transport-Security (HSTS) header",
+      "Without HSTS a user can be tricked into visiting the site over plain HTTP (SSL-strip attacks).",
+      "Enable HSTS once you are sure HTTPS works for all subdomains.",
+      'Strict-Transport-Security: max-age=31536000; includeSubDomains'],
+    ["x-frame-options", "low", "No X-Frame-Options / frame-ancestors protection",
+      "The site can be embedded in an iframe, enabling clickjacking attacks (the modern CSP frame-ancestors directive also fixes this).",
+      "Send X-Frame-Options, or better, the CSP frame-ancestors directive.",
+      'X-Frame-Options: DENY'],
+    ["x-content-type-options", "low", "No X-Content-Type-Options header",
+      "Browsers may MIME-sniff responses and execute an innocent file as script.",
+      "Stop MIME sniffing with one header.",
+      'X-Content-Type-Options: nosniff'],
+    ["referrer-policy", "low", "No Referrer-Policy header",
+      "Full URLs (including query strings with tokens/session IDs) can leak to third-party sites via the Referer header.",
+      "Set a restrictive Referrer-Policy.",
+      'Referrer-Policy: strict-origin-when-cross-origin'],
+  ];
+  for (const [key, sev, title, desc, fix, code] of wanted) {
+    if (isHttps === false && key === "strict-transport-security") continue; // pointless without TLS
+    if (!h[key]) addFinding(sev, title, "Missing security header", desc, fix, code);
+  }
+}
+
+function checkHtml(html, pageUrl, isHttps) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+
+  /* ---- technology detection ---- */
+  for (const t of TECH_SIGNATURES) {
+    try { if (t.test(html)) TECH.push(t.name); } catch (e) {}
+  }
+
+  /* ---- jQuery version ---- */
+  const jq = html.match(/jquery[.\-\/]?(\d+)\.(\d+)(\.(\d+))?/i);
+  if (jq && parseInt(jq[1], 10) < 3) {
+    addFinding("high", "Outdated jQuery " + jq[1] + "." + jq[2] + " detected",
+      "Known vulnerabilities",
+      "jQuery before 3.x (especially 1.x) has publicly known XSS and prototype-pollution vulnerabilities (e.g. CVE-2020-11022/11023 in <3.5). Attackers actively scan for old jQuery.",
+      "Upgrade to the latest jQuery 3.x. If you cannot, at minimum upgrade to 3.5.0+.",
+      '<script src="https://code.jquery.com/jquery-3.7.1.min.js"><\/script>');
+  }
+
+  /* ---- title ---- */
+  const title = (doc.querySelector("title") && doc.querySelector("title").textContent.trim()) || "";
+  if (!title) {
+    addFinding("medium", "Missing or empty <title> tag", "SEO & usability",
+      "The page title is what shows in search results and browser tabs. An empty title hurts ranking and looks broken.",
+      "Add a unique, descriptive title (50–60 characters).",
+      "<title>Acme Tools — Free Online PDF Editor</title>");
+  } else if (title.length > 65) {
+    addFinding("low", "Page title is too long (" + title.length + " chars)", "SEO",
+      "Google truncates titles around 60 characters in search results.",
+      "Keep titles between 50 and 60 characters.", null);
+  }
+
+  /* ---- meta description ---- */
+  const md = doc.querySelector('meta[name="description" i]');
+  if (!md || !md.getAttribute("content") || !md.getAttribute("content").trim()) {
+    addFinding("medium", "Missing meta description", "SEO",
+      "Search engines show the meta description under your link. Without it, Google invents a snippet.",
+      "Add a compelling 120–160 character description.",
+      '<meta name="description" content="Fix bugs and detect vulnerabilities in any website with BugHunter, a free browser-based scanner.">');
+  } else if (md.getAttribute("content").trim().length > 165) {
+    addFinding("low", "Meta description too long (" + md.getAttribute("content").trim().length + " chars)", "SEO",
+      "Descriptions get truncated after ~160 characters.",
+      "Trim the description to under 160 characters.", null);
+  }
+
+  /* ---- viewport ---- */
+  if (!doc.querySelector('meta[name="viewport" i]')) {
+    addFinding("medium", "No mobile viewport meta tag", "Mobile",
+      "Phones render the page at desktop width, so users have to pinch-zoom. Google also demotes non-mobile-friendly pages.",
+      "Add the responsive viewport tag in <head>.",
+      '<meta name="viewport" content="width=device-width, initial-scale=1.0">');
+  }
+
+  /* ---- language ---- */
+  if (!doc.documentElement.getAttribute("lang")) {
+    addFinding("low", "Missing lang attribute on <html>", "Accessibility & SEO",
+      "Screen readers pick the wrong voice/pronunciation and search engines can't identify the page language.",
+      "Declare the page language.",
+      '<html lang="en">');
+  }
+
+  /* ---- charset ---- */
+  const charset = doc.querySelector("meta[charset i]") ||
+                  doc.querySelector('meta[http-equiv="Content-Type" i]');
+  const csOk = (doc.querySelector("meta[charset i]")) ||
+               (charset && /utf-8/i.test(charset.getAttribute("content") || ""));
+  if (!csOk) {
+    addFinding("medium", "No charset declared", "Encoding bug",
+      "Without a charset the browser guesses, and text can render as mojibake (â€™ etc.). It also allows some old UTF-7 XSS attacks.",
+      "Add the charset declaration as the first tag in <head>.",
+      '<meta charset="UTF-8">');
+  }
+
+  /* ---- favicon ---- */
+  if (!doc.querySelector('link[rel*="icon" i]')) {
+    addFinding("low", "No favicon declared", "Browser bug",
+      "Browsers request /favicon.ico anyway (a 404 in every server log) and the tab shows a blank icon.",
+      "Add a favicon link in <head> and place the file at the site root.",
+      '<link rel="icon" href="/favicon.ico" sizes="any">\n<link rel="icon" href="/favicon.svg" type="image/svg+xml">');
+  }
+
+  /* ---- headings ---- */
+  const h1s = doc.querySelectorAll("h1").length;
+  if (h1s === 0) {
+    addFinding("low", "No <h1> heading", "SEO & accessibility",
+      "The h1 tells users and search engines what the page is about.",
+      "Add exactly one descriptive <h1> per page.", "<h1>Website Bug Scanner & Fixer</h1>");
+  } else if (h1s > 1) {
+    addFinding("low", h1s + " <h1> tags found", "SEO",
+      "Multiple h1 tags dilute the page's topic signal for search engines.",
+      "Use one h1 and demote the rest to h2/h3.", null);
+  }
+
+  /* ---- images without alt ---- */
+  const imgsNoAlt = doc.querySelectorAll('img:not([alt]), img[alt=""]').length;
+  const imgTotal = doc.querySelectorAll("img").length;
+  if (imgsNoAlt > 0) {
+    addFinding("medium", imgsNoAlt + " image(s) missing alt text" + (imgTotal ? " (of " + imgTotal + ")" : ""), "Accessibility bug",
+      "Screen-reader users get no information for these images, and it's an accessibility legal requirement in many countries (WCAG 2.1).",
+      "Add descriptive alt attributes (alt=\"\" only for purely decorative images).",
+      '<img src="chart.png" alt="Sales grew 40% after the redesign">');
+  }
+
+  /* ---- target=_blank without rel=noopener ---- */
+  let unsafeBlank = 0;
+  doc.querySelectorAll('a[target="_blank"]').forEach(a => {
+    const rel = (a.getAttribute("rel") || "").toLowerCase();
+    if (!rel.includes("noopener")) unsafeBlank++;
+  });
+  if (unsafeBlank > 0) {
+    addFinding("medium", unsafeBlank + ' link(s) with target="_blank" missing rel="noopener"', "Security bug (tabnabbing)",
+      'A link opened in a new tab can control window.opener and redirect YOUR page to a phishing clone (reverse tabnabbing).',
+      'Add rel="noopener noreferrer" to every target="_blank" link.',
+      '<a href="https://external.example" target="_blank" rel="noopener noreferrer">External doc</a>');
+  }
+
+  /* ---- deprecated tags ---- */
+  const depr = ["center", "font", "marquee", "frameset", "frame", "big", "strike", "applet"];
+  const foundDepr = depr.filter(t => doc.getElementsByTagName(t).length > 0);
+  if (foundDepr.length) {
+    addFinding("low", "Deprecated HTML tags: " + foundDepr.join(", "), "Code quality",
+      "These tags were removed or discouraged in HTML5 and behave inconsistently across browsers.",
+      "Replace with modern CSS (flexbox/grid instead of <center>, CSS color/font instead of <font>).",
+      '<!-- old --> <center><font color="red">Hi</font></center>\n<!-- new --> <p style="text-align:center;color:red">Hi</p>');
+  }
+
+  /* ---- mixed content ---- */
+  if (isHttps) {
+    const mixed = html.match(/(?:src|href)\s*=\s*["']http:\/\/(?!www\.w3\.org|schemas\.xmlsoap|purl\.org|xmlns)[^"']+/gi) || [];
+    if (mixed.length) {
+      addFinding("high", mixed.length + " insecure http:// resource(s) on an HTTPS page", "Mixed content — browser-blocked bug",
+        "Browsers block or warn about active mixed content (scripts, styles, iframes over http://), which silently breaks pages and strips the padlock.",
+        "Load every resource over https:// (or protocol-relative upgrade).",
+        '<!-- old --> <script src="http://cdn.example.com/lib.js"><\/script>\n<!-- new --> <script src="https://cdn.example.com/lib.js"><\/script>');
+    }
+  }
+
+  /* ---- forms ---- */
+  const forms = doc.querySelectorAll("form");
+  for (const f of forms) {
+    const hasPw = f.querySelector('input[type="password" i]');
+    if (!hasPw) continue;
+    const action = (f.getAttribute("action") || "").trim();
+    if (!isHttps || /^http:\/\//i.test(action)) {
+      addFinding("critical", "Login/password form submitted over plain HTTP", "Credentials sent unencrypted",
+        "Passwords travel in clear text and can be sniffed on any network in between (public Wi-Fi, ISPs, proxies).",
+        "Serve the whole site over HTTPS and never point a form action at http://. Redirect all HTTP traffic to HTTPS.",
+        '# nginx — force HTTPS\nserver {\n  listen 80;\n  server_name example.com;\n  return 301 https://$host$request_uri;\n}');
+      break;
+    }
+  }
+
+  /* ---- Open Graph ---- */
+  if (!doc.querySelector('meta[property^="og:" i]')) {
+    addFinding("info", "No Open Graph tags", "Social sharing",
+      "Shared links on WhatsApp/Twitter/LinkedIn show a bare URL instead of a rich card.",
+      "Add at least og:title, og:description and og:image.",
+      '<meta property="og:title" content="BugHunter — Website Scanner">\n<meta property="og:description" content="Find and fix website bugs.">\n<meta property="og:image" content="https://example.com/card.png">');
+  }
+
+  /* ---- inline styles count (info) ---- */
+  const inlineStyles = doc.querySelectorAll("[style]").length;
+  if (inlineStyles > 50) {
+    addFinding("info", inlineStyles + " inline style attributes", "Maintainability",
+      "Heavy inline styling makes themes and redesigns painful and bloats the HTML.",
+      "Move repeated styles into classes in a stylesheet.", null);
+  }
+}
+
+async function checkSensitiveFiles(base) {
+  const checks = [
+    { path: "/.env", marker: /APP_KEY|DB_PASSWORD|DATABASE_URL|API_KEY|SECRET/i,
+      title: "Exposed .env file", why: "The .env file usually contains database passwords, API keys and app secrets. Anyone can read it right now." },
+    { path: "/.git/config", marker: /\[core\]/,
+      title: "Exposed .git directory", why: "The git folder lets attackers download your ENTIRE source code history (tools like git-dumper automate this)." },
+    { path: "/.DS_Store", marker: /Bud1|\x00/,
+      title: "Exposed .DS_Store file", why: "macOS metadata that leaks internal file and directory names." },
+  ];
+  for (const c of checks) {
+    const res = await fetchWithStatus(base + c.path);
+    if (res && res.code === 200 && c.marker.test(res.body)) {
+      addFinding("critical", c.title, "Sensitive data exposure (CWE-200)",
+        c.why,
+        "Block dotfiles at the web server, remove the file from the web root, and rotate every secret/password that was in it.",
+        '# nginx\nlocation ~ /\\. { deny all; }\n\n# apache (.htaccess)\n<FilesMatch "^\\.">\n  Require all denied\n</FilesMatch>');
+    }
+    await sleep(150);
+  }
+}
+
+async function checkRobotsSitemap(base) {
+  const robots = await fetchWithStatus(base + "/robots.txt");
+  if (!robots || robots.code !== 200) {
+    addFinding("info", "No robots.txt", "Crawler config",
+      "robots.txt tells crawlers what to skip and points them to your sitemap.",
+      "Add a minimal robots.txt at the site root.",
+      "User-agent: *\nAllow: /\nSitemap: https://example.com/sitemap.xml");
+  } else if (/disallow:\s*\/\s*$/im.test(robots.body) && /disallow:\s*\/\s*$/im.test(robots.body)) {
+    // entire site disallowed — only flag when literally only that
+  }
+  if (robots && robots.code === 200 && !/sitemap:/i.test(robots.body)) {
+    const sm = await fetchWithStatus(base + "/sitemap.xml");
+    if (!sm || sm.code !== 200) {
+      addFinding("info", "No sitemap found", "SEO",
+        "Sitemaps help search engines discover all your pages.",
+      "Generate a sitemap and reference it in robots.txt.",
+        "Sitemap: https://example.com/sitemap.xml");
+    }
+  }
+}
+
+/* ============================= orchestration ============================== */
+
+async function runScan(rawUrl) {
+  FINDINGS = [];
+  TECH = [];
+  window.__AI = null;
+  TERM.innerHTML = "";
+  $("findings").innerHTML = "";
+  $("findings").style.display = "none";
+  $("summary").style.display = "none";
+  $("techBox").style.display = "none";
+  TERM.style.display = "block";
+  document.querySelector(".progress-track").style.display = "block";
+  $("scanBtn").disabled = true;
+  $("scanBtn").textContent = "SCANNING…";
+
+  let host = rawUrl.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+  if (!host || !/\./.test(host)) {
+    alert("Please enter a valid domain, e.g. example.com");
+    $("scanBtn").disabled = false;
+    $("scanBtn").textContent = "▶ RUN SCAN";
+    return;
+  }
+  const httpsUrl = "https://" + host + "/";
+  const httpUrl  = "http://" + host + "/";
+  setProgress(5);
+
+  /* 1. reachability + TLS */
+  log("$ bughunter scan " + host, "info");
+  log("[*] Resolving and probing https://" + host + " …", "info");
+  const httpsOk = await probeReachable(httpsUrl);
+  let httpOk = false;
+  if (httpsOk) log("[+] HTTPS reachable — TLS working", "ok");
+  else {
+    log("[!] HTTPS unreachable, testing plain HTTP …", "warn");
+    httpOk = await probeReachable(httpUrl);
+  }
+  setProgress(20);
+
+  let finalUrl, isHttps;
+  if (httpsOk) { finalUrl = httpsUrl; isHttps = true; }
+  else if (httpOk) {
+    finalUrl = httpUrl; isHttps = false;
+    addFinding("high", "Site does not support HTTPS", "No TLS — everything readable in transit",
+      "All traffic (including any logins) travels unencrypted and can be read or modified by anyone on the network path.",
+      "Install a free TLS certificate (Let's Encrypt) and redirect HTTP to HTTPS.",
+      "certbot --nginx -d " + host);
+  } else {
+    log("[-] Host unreachable over HTTPS and HTTP", "err");
+    log("[-] Scan aborted. Check the domain / your connection.", "err");
+    setProgress(100);
+    $("scanBtn").disabled = false;
+    $("scanBtn").textContent = "▶ RUN SCAN";
+    TERM.style.display = "block";
+    return;
+  }
+  log("[*] Fetching page source for analysis …", "info");
+  setProgress(35);
+
+  /* 2. page source */
+  const page = await fetchPage(finalUrl);
+  if (!page) {
+    log("[-] Could not retrieve page source (site or proxies unreachable)", "err");
+    addFinding("info", "Page source could not be fetched", "Scan limitation",
+      "The HTML could not be retrieved from this browser (network or CORS proxy limits), so the deep content analysis was skipped.",
+      "Try again, or run a server-side scan for full results.", null);
+  } else {
+    log("[+] Retrieved " + page.html.length.toLocaleString() + " bytes of HTML" + (page.via !== "direct" ? " (via proxy)" : ""), "ok");
+  }
+  setProgress(50);
+
+  /* 3. headers */
+  if (page && page

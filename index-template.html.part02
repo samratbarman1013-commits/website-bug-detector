@@ -1,0 +1,443 @@
+.via === "direct" && Object.keys(page.headers).length) {
+    log("[*] Reading security headers (direct CORS access) …", "info");
+    checkSecurityHeaders(page.headers, isHttps);
+  } else {
+    addFinding("info", "Security headers not verifiable from the browser", "Scan limitation",
+      "The browser hides response headers unless the site sends CORS headers. Check these manually with: curl -I https://" + host,
+      "Verify these five headers exist: Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy.",
+      "curl -sI https://" + host + " | grep -iE 'content-security|strict-transport|x-frame|x-content-type|referrer-policy'");
+  }
+  setProgress(60);
+
+  /* 4. HTML analysis */
+  if (page && page.html) {
+    log("[*] Analysing HTML, SEO and accessibility …", "info");
+    checkHtml(page.html, finalUrl, isHttps);
+    log("[+] Content analysis done", "ok");
+  }
+  /* 4b. AI risk model */
+  log("[*] Running embedded AI risk model (" + AI_MODEL.params.toLocaleString() + " parameters, in-browser inference) …", "info");
+  try { runAiAnalysis(finalUrl, page); } catch (e) { log("[-] AI analysis skipped: " + e.message, "warn"); }
+  setProgress(75);
+
+  /* 5. sensitive files */
+  log("[*] Checking for exposed sensitive files (/.env, /.git/config …) …", "info");
+  await checkSensitiveFiles(finalUrl);
+  setProgress(85);
+
+  /* 6. robots + sitemap */
+  log("[*] Checking robots.txt / sitemap.xml …", "info");
+  await checkRobotsSitemap(finalUrl);
+  setProgress(95);
+  await sleep(250);
+
+  log("[✓] Scan complete — " + FINDINGS.length + " finding(s)", "ok");
+  setProgress(100);
+
+  renderReport(host, finalUrl);
+  $("scanBtn").disabled = false;
+  $("scanBtn").textContent = "▶ RUN SCAN";
+}
+
+function setProgress(pct) {
+  $("progressFill").style.width = pct + "%";
+}
+
+/* ============================== rendering ============================== */
+
+const SEV_ORDER = ["critical", "high", "medium", "low", "info"];
+const SEV_LABEL = { critical: "CRITICAL", high: "HIGH", medium: "MEDIUM", low: "LOW", info: "INFO" };
+
+function scoreFromFindings() {
+  let s = 100;
+  for (const f of FINDINGS) {
+    if (f.sev === "critical") s -= 25;
+    else if (f.sev === "high") s -= 14;
+    else if (f.sev === "medium") s -= 7;
+    else if (f.sev === "low") s -= 3;
+  }
+  return Math.max(0, Math.min(100, s));
+}
+
+function renderReport(host, finalUrl) {
+  const score = scoreFromFindings();
+  const counts = {};
+  for (const f of FINDINGS) counts[f.sev] = (counts[f.sev] || 0) + 1;
+
+  /* gauge */
+  const arc = $("gaugeArc");
+  const C = 2 * Math.PI * 56;
+  arc.style.strokeDashoffset = C - (C * score / 100);
+  arc.setAttribute("stroke", score >= 80 ? "#34d399" : score >= 60 ? "#facc15" : score >= 40 ? "#fb923c" : "#f87171");
+  $("scoreVal").textContent = score;
+
+  $("targetUrl").textContent = "target: " + finalUrl;
+
+  /* pills */
+  const pillRow = $("pillRow");
+  pillRow.innerHTML = "";
+  SEV_ORDER.forEach(s => {
+    if (counts[s]) {
+      const p = document.createElement("span");
+      p.className = "pill " + s;
+      p.textContent = counts[s] + " " + SEV_LABEL[s];
+      pillRow.appendChild(p);
+    }
+  });
+  if (!FINDINGS.filter(f => f.sev !== "info").length) {
+    const p = document.createElement("span");
+    p.className = "pill pass";
+    p.textContent = "✓ NO ISSUES FOUND";
+    pillRow.appendChild(p);
+  }
+  $("summary").style.display = "block";
+
+  /* tech chips */
+  if (TECH.length) {
+    const chips = $("chips");
+    chips.innerHTML = "";
+    TECH.forEach(t => {
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.innerHTML = '<span class="dot"></span>' + esc(t);
+      chips.appendChild(c);
+    });
+    $("techBox").style.display = "block";
+  }
+
+  /* findings */
+  const cont = $("findings");
+  cont.innerHTML = "";
+  let rendered = 0;
+  SEV_ORDER.forEach(sev => {
+    const group = FINDINGS.filter(f => f.sev === sev);
+    if (!group.length) return;
+    const h = document.createElement("h3");
+    h.className = "section-title";
+    h.textContent = SEV_LABEL[sev] + " (" + group.length > ")";
+    cont.appendChild(h);
+    group.forEach(f => {
+      const div = document.createElement("div");
+      div.className = "finding";
+      const codeHtml = f.code
+        ? '<div class="fix-label">Fix</div>' + f.fix +
+          '<pre class="code"><button class="copy-btn">copy</button>' + esc(f.code) + "</pre>"
+        : '<div class="fix-label">Fix</div>' + f.fix;
+      div.innerHTML =
+        '<div class="finding-head">' +
+          '<span class="sev ' + f.sev + '">' + SEV_LABEL[f.sev] + '</span>' +
+          '<span class="finding-title">' + esc(f.title) + "<small>" + esc(f.subtitle) + "</small></span>" +
+          '<span class="chev">▶</span>' +
+        '</div>' +
+        '<div class="finding-body">' +
+          '<div class="desc">' + esc(f.desc) + "</div>" + codeHtml +
+        "</div>";
+      div.querySelector(".finding-head").addEventListener("click", () => div.classList.toggle("open"));
+      const cb = div.querySelector(".copy-btn");
+      if (cb) cb.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const txt = div.querySelector("pre.code").textContent.replace(/^copy$/, "").trim();
+        navigator.clipboard.writeText(txt).then(() => {
+          cb.textContent = "copied!";
+          setTimeout(() => cb.textContent = "copy", 1200);
+        }).catch(() => {});
+      });
+      cont.appendChild(div);
+      rendered++;
+    });
+  });
+  if (!rendered) {
+    cont.innerHTML = '<div class="no-issues">✓ Clean scan — no bugs or vulnerabilities detected.</div>';
+  }
+  cont.style.display = "block";
+
+  LAST_REPORT = {
+    tool: "BugHunter",
+    scannedAt: new Date().toISOString(),
+    target: finalUrl,
+    score: score,
+    technologies: TECH,
+    ai: window.__AI || null,
+    findings: FINDINGS.map(f => ({ severity: f.sev, title: f.title, category: f.subtitle, problem: f.desc, fix: f.fix, code: f.code }))
+  };
+}
+
+/* ============================== AI risk model ============================== */
+/* 1,500,548-parameter multi-label neural net, int8-quantized, embedded below.
+   Input : 2560 hashed bag-of-tokens (FNV-1a) + 48 engineered numeric features
+   Output: [phishing, malware, outdated, quality] probabilities. */
+
+const AI_MODEL = __MODEL_DATA__;
+
+const AI_LAYERS = [];
+const AI_SAL = [];
+(function aiInit() {
+  const b2i8 = (b64) => {
+    const bin = atob(b64);
+    const u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return new Int8Array(u.buffer);
+  };
+  for (const L of AI_MODEL.layers) {
+    const q = b2i8(L.w);
+    const W = new Float32Array(q.length);
+    for (let i = 0; i < q.length; i++) W[i] = q[i] * L.s;
+    AI_LAYERS.push({ W, b: new Float32Array(L.b), inn: L.in, out: L.out });
+  }
+  for (const S of AI_MODEL.sal) {
+    const q = b2i8(S.g);
+    const g = new Float32Array(q.length);
+    for (let i = 0; i < q.length; i++) g[i] = q[i] * S.s;
+    AI_SAL.push(g);
+  }
+})();
+
+let AI_TOKEN_REV = null;
+function aiTokenRev() {
+  if (!AI_TOKEN_REV) {
+    AI_TOKEN_REV = {};
+    for (const t in AI_MODEL.tokenVocab) {
+      const i = AI_MODEL.tokenVocab[t];
+      (AI_TOKEN_REV[i] = AI_TOKEN_REV[i] || []).push(t);
+    }
+  }
+  return AI_TOKEN_REV;
+}
+
+/* FNV-1a 32-bit — must match the Python training implementation byte-for-byte */
+function aiHash(str) {
+  let h = 0x811c9dc5 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
+function aiForward(x) {
+  let h = x;
+  for (let li = 0; li < AI_LAYERS.length; li++) {
+    const L = AI_LAYERS[li];
+    const y = new Float32Array(L.out);
+    for (let o = 0; o < L.out; o++) {
+      let s = L.b[o];
+      const off = o * L.inn;
+      for (let i = 0; i < L.inn; i++) s += L.W[off + i] * h[i];
+      y[o] = (li < AI_LAYERS.length - 1) ? (s > 0 ? s : 0) : (1 / (1 + Math.exp(-s)));
+    }
+    h = y;
+  }
+  return h;
+}
+
+/* Build the model input from the scan result. The 48 numeric features are a
+   fixed contract with the training script (train_ai.py, gen_batch). */
+function aiExtract(urlStr, page) {
+  const D = AI_MODEL.hashDim, NF = AI_MODEL.nFeat;
+  let uo; try { uo = new URL(urlStr); } catch (e) { return null; }
+  const host = uo.hostname.toLowerCase();
+  const f = new Array(NF).fill(0);
+  const html = (page && page.html) ? page.html : "";
+  const doc = html ? new DOMParser().parseFromString(html, "text/html") : null;
+
+  /* 0-12: URL features */
+  f[0]  = Math.min(urlStr.length / 200, 1);
+  f[1]  = Math.min(host.length / 60, 1);
+  const digits = (host.match(/[0-9]/g) || []).length;
+  f[2]  = host.length ? digits / host.length : 0;
+  f[3]  = Math.min((host.match(/-/g) || []).length / 6, 1);
+  f[4]  = Math.min(Math.max(0, host.split(".").length - 2) / 5, 1);
+  f[5]  = /^\d+\.\d+\.\d+\.\d+$/.test(host) ? 1 : 0;
+  f[6]  = /\.(tk|ml|ga|cf|gq|xyz|top|buzz|click|link|work|rest|fit|country|stream|download|gdn|racing|loan|men|party|review|science|webcam|site|icu|cam)$/i.test(host) ? 1 : 0;
+  f[7]  = host.indexOf("xn--") !== -1 ? 1 : 0;
+  f[8]  = uo.protocol === "https:" ? 1 : 0;
+  f[9]  = Math.min(uo.pathname.split("/").filter(Boolean().length / 8, 1);
+  f[10] = Math.min((uo.search || "").length / 100, 1);
+  f[11] = urlStr.indexOf("@") !== -1 ? 1 : 0;
+  f[12] = /login|signin|verify|account|secure|update|password|wallet|bank/i.test(urlStr) ? 1 : 0;
+
+  /* 13-47: page features (0.5 = unknown, mirrors training augmentation) */
+  if (!doc) {
+    for (let j = 13; j < NF; j++) f[j] = 0.5;
+  } else {
+    const tEl = doc.querySelector("title");
+    const t = tEl ? tEl.textContent.trim() : "";
+    const md = doc.querySelector('meta[name="description" i]');
+    const d = md ? (md.getAttribute("content") || "").trim() : "";
+    f[13] = t ? 1 : 0;
+    f[14] = Math.min(t.length / 80, 1);
+    f[15] = d ? 1 : 0;
+    f[16] = Math.min(d.length / 300, 1);
+    f[17] = doc.querySelector('meta[name="viewport" i]')) ? 1 : 0;
+    f[18] = (doc.querySelector("meta[charset i]") || /charset=/i.test(html.slice(0, 2000))) ? 1 : 0;
+    f[19] = doc.documentElement.getAttribute("lang") ? 1 : 0;
+    f[20] = doc.querySelector('link[rel*="icon" i]') ? 1 : 0;
+    f[21] = Math.min(doc.querySelectorAll("h1").length / 5, 1);
+    const imgs = doc.querySelectorAll("img");
+    f[22] = Math.min(imgs.length / 100, 1);
+    f[23] = imgs.length > doc.querySelectorAll('img:not([alt]), img[alt=""]').length / imgs.length : 0;
+    f[24] = Math.min(doc.querySelectorAll("[style]").length / 50, 1);
+    f[25] = Math.min(doc.querySelectorAll("script").length / 40, 1);
+    f[26] = Math.min(doc.querySelectorAll("iframe").length / 5, 1);
+    f[27] = Math.min(doc.querySelectorAll("form").length / 5, 1);
+    f[28] = doc.querySelector('input[type="password" i]') ? 1 : 0;
+    const actHttp = Array.from(doc.querySelectorAll("form"))
+      .some(fm => /^http:\/\//i.test((fm.getAttribute("action") || "").trim()));
+    f[29] = ((f[8] === 0 && f[28] === 1) || actHttp) ? 1 : 0;
+    f[30] = Math.min((html.match(/(?:src|href)\s*=\s*["']http:\/\/(?!www\.w3\.org|schemas\.xmlsoap|purl\.org)/gi) || []).length / 10, 1);
+    f[31] = Math.min((html.match(/\son\w+\s*=/gi) || []).length / 50, 1);
+    const jq = html.match(/jquery[.\-\/]?(\d+)\.(\d+)/i);
+    f[32] = (jq || /jquery/i.test(html)) ? 1 : 0;
+    f[33] = jq ? Math.min(parseInt(jq[1], 10) / 3, 1) : 0;
+    f[34] = Math.min*["center", "font", "marquee", "frameset", "frame", "big", "strike", "applet"]
+      .reduce((a, tg) => a + doc.getElementsByTagName(tg).length, 0) / 5, 1);
+    const blanks = doc.querySelectorAll('a[target="_blank"]');
+    let unsafe = 0;
+    blanks.forEach(a => { if (!((a.getAttribute("rel") || "").toLowerCase().includes("noopener"))) unsafe++; });
+    f[35] = blanks.length ? unsafe / blanks.length : 0;
+    f[36]  = Math.min((html.match(/\beval\s*\(/g) || []).length / 10, 1);
+    f[37] = Math.min(((html.match(/\batob\s*\(/g) || []).length +
+                      (html.match(/unescape\s*\(/g) || []).length +
+                      (html.match(/fromCharCode/g) || []).length +
+                      (html.match(/document\.write/g) || []).length) / 10, 1);
+    f[38] = /[0-9a-fA-F]{32,}/.test(html.replace(/https?:\/\/[^\s"']+/g, "")) ? 1 : 0;
+    const kws = ["verify your account", "account suspended", "wallet", "bitcoin", "seed phrase",
+                 "gift card", "you have won", "prize", "unlock your", "limited time", "act now", "urgent"];
+    const bodyTxt = (doc.body ? doc.body.textContent : "").toLowerCase().slice(0, 4000);
+    f[39]  = Math.min(kws.reduce((a, k) => a + (bodyTxt.split(k).length - 1), 0) / 8, 1);
+    f[40]  = /coinhive|cryptonight|stratum\s*\+?\ss*tcp|miner\.js|webminer/i.test(html) ? 1 : 0;
+    const srcs = Array.from(doc.querySelectorAll("script[src]"));
+    f[41] = Math.min(srcs.length / 20, 1);
+    f[42] = srcs.length ? srcs.filter(s => /^http:\/\//i.test(s.getAttribute("src") || "")).length / srcs.length : 0;
+    const h = (page && page.headers) || {};
+    f[43] = ("content-security-policy" in h) ? (h["content-security-policy"] ? 1 : 0) : 0.5;
+    f[44] = ("strict-transport-security" in h) ? (h["strict-transport-security"] ? 1 : 0) : 0.5;
+    f[45] = ("x-frame-options" in h) ? (h["x-frame-options"] ? 1 : 0) : 0.5;
+    f[46] = doc.querySelector('meta[http-equiv="refresh" i]') ? 1 : 0;
+    f[47] = Math.min(doc.querySelectorAll('input[type="password" i]').length, 1);
+  }
+
+  /* hashed bag-of-tokens */
+  const toks = new Set();
+  const addToks = (s, cap) => {
+    (String(s).toLowerCase().match(/[a-z0-9]{3,30}/g) || []).slice(0, cap).forEach(t => toks.add(t));
+  };
+  addToks(host.replace(/\./g, " ") + " " + uo.pathname, 40);
+  if (doc) {
+    const tEl = doc.querySelector("title");
+    if (tEl) addToks(tEl.textContent, 20);
+    if (doc.body) addToks(doc.body.textContent, 200);
+    doc.querySelectorAll("script[src]").forEach(s => addToks(s.getAttribute("src") || "", 10));
+  }
+
+  const x = new Float32Array(D + NF);
+  toks.forEach(t => { x[aiHash(t) % D] = 1; });
+  for (let j = 0; j < NF; j++) x[D + j] = f[j];
+  return { x, f, tokens: Array.from(toks).slice(0, 250) };
+}
+
+/* saliency-based explanation: which inputs pushed the winning class */
+function aiExplain(ex, ci) {
+  const D = AI_MODEL.hashDim;
+  const sal = AI_SAL[ci];
+  const rev = aiTokenRev();
+  const items = [];
+  const seen = {};
+  for (const tok of ex.tokens) {
+    const idx = aiHash(tok) % D;
+    const names = rev[idx];
+    if (!names) continue;
+    const v = sal[idx];
+    if (v > 0 && !seen[names[0]]) { seen[names[0]] = 1; items.push({ name: names[0], v }); }
+  }
+  for (let j = 0; j < AI_MODEL.nFeat; j++) {
+    const v = sal[D + j] * ex.f[j];
+    if (v > 0 && !seen[AI_MODEL.featNames[j]]) { seen[AI_MODEL.featNames[j]] = 1; items.push({ name: AI_MODEL.featNames[j], v }); }
+  }
+  items.sort((a, b) => b.v - a.v);
+  return items.slice(0, 6);
+}
+
+function aiLevel(p) {
+  return p >= 0.7 ? ["hi", "HIGH"] : p >= 0.45 ? ["ele", "ELEVATED"] : p >= 0.2 ? ["mod", "MODERATE"] : ["low", "LOW"];
+}
+
+function runAiAnalysis(urlStr, page) {
+  const ex = aiExtract(urlStr, page);
+  if (!ex) return;
+  const probs = aiForward(ex.x);
+
+  const bars = $("aiBars");
+  bars.innerHTML = "";
+  for (let c = 0; c < probs.length; c++) {
+    const p = probs[c];
+    const cls = aiLevel(p)[0], lvName = aiLevel(p)[1];
+    const row = document.createElement("div");
+    row.className = "ai-row";
+    row.innerHTML =
+      '<div class="ai-label">' + esc(AI_MODEL.labels[c]) + "</div>" +
+      '<div class="ai-track"><div class="ai-fill" data-p="' + p + '"></div></div>' +
+      '<div class="ai-pct">' + Math.round(p * 100) + "%</div>" +
+      '<div class="ai-level ' + cls + '">' + lvName + "</div>";
+    bars.appendChild(row);
+  }
+  bars.querySelectorAll(".ai-fill").forEach(el => {
+    const p = parseFloat(el.dataset.p);
+    el.style.width = (p * 100) + "%";
+    el.style.background = p >= 0.7 ? "var(--red)" : p >= 0.45 ? "var(--orange)" : p >= 0.2 ? "var(--yellow)" : "var(--green)";
+  });
+
+  let best = 0;
+  for (let c = 1; c < probs.length; c++) if (probs[c] > probs[best]) best = c;
+  const sig = aiExplain(ex, best);
+  const sc = $("aiSignals");
+  sc.innerHTML = "";
+  const maxv = sig.length ? sig[0].v : 1;
+  sig.forEach(s => {
+    const chip = document.createElement("span");
+    chip.className = "ai-chip";
+    chip.textContent = s.name + "  +" + Math.round(100 * s.v / maxv) + "%";
+    sc.appendChild(chip);
+  });
+
+  $("aiPanel").style.display = "block";
+  window.__AI = { probabilities: {}, signals: sig.map(s => s.name) };
+  AI_MODEL.labels.forEach((l, c) => { window.__AI.probabilities[l] = Math.round(probs[c] * 100) / 100; });
+
+  log("[+] AI: phishing " + Math.round(probs[0] * 100) + "% | malware " + Math.round(probs[1] * 100) +
+      "% | outdated " + Math.round(probs[2] * 100) + "% | quality " + Math.round(probs[3]   100) + "%", "ok");
+
+  const maxP = Math.max.apply(null, Array.from(probs));
+  if (maxP >= 0.6) {
+    const bestL = AI_MODEL.labels[best];
+    addFinding(maxP >= 0.85 ? "high" : "medium",
+      "AI model flags " + bestL.toLowerCase() + " risk (" + Math.round(maxP * 100) + "%)",
+      "Neural network assessment",
+      "The embedded " + AI_MODEL.params.toLocaleString() + "-parameter neural network estimates a " +
+      Math.round(maxP * 100) + "% probability that this site matches the '" + bestL +
+      "' profile. Top contributing signals: " + (sig.slice(0, 4).map(s => s.name).join(", ") || "n/a") + ".",
+      "Treat the AI score as a lead, not proof — verify against the concrete rule findings above and manual review. If this profile is expected for your site, you can ignore it.",
+      null);
+  }
+}
+
+/* ============================== wiring ============================== */
+
+$("scanBtn").addEventListener("click", () = runScan($("url").value));
+$("url").addEventListener("keydown", e => { if (e.key === "Enter") runScan($("url").value); });
+$("rescanBtn").addEventListener("click", () => {
+  $("summary").style.display = "none";
+  runScan($("url").value);
+});
+$("exportBtn").addEventListener("click", () => {
+  if (!LAST_REPORT) return;
+  const blob = new Blob([JSON.stringify(LAST_REPORT, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.downloadd = "bughunter-report.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+</script>
+</body>
+</html>
