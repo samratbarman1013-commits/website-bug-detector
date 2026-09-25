@@ -1,4 +1,4 @@
-# BugHunter v2 — Website Bug & Vulnerability Detector
+# BugHunter v3 — Website Bug & Vulnerability Detector
 
 A **single-file website scanner** that checks any site for real bugs, security
 issues and quality problems — and tells you exactly how to fix each one.
@@ -9,17 +9,16 @@ your machine.
 
 Live instance: https://bughunter-website-scanner.netlify.app
 
-## What's new in v2
+## What's new in v3
 
-- **AI risk engine upgraded** — 2,373,700 parameters (up from 1,500,548):
-  `2608 → 768 → 384 → 192 → 4`, retrained and re-verified (all heads
-  AUC 1.00 on validation, quantized accuracy ≥ 99.7%).
-- **8 new checks** — Subresource Integrity (SRI) on external scripts,
-  unsandboxed iframes, `javascript:` links, duplicate DOM IDs, image layout
-  shift (CLS), unlabeled form controls, meta-refresh redirects,
-  inline-event-handler audit.
-- **Scan history** — recent scans and scores are kept in your browser
-  (localStorage) for one-click rescans. Reports are stamped with the version.
+- **AI risk engine — 3,837,028 parameters** (2.37M in v2, 1.5M in v1):
+  `2608 → 1152 → 576 → 288 → 4`, retrained and re-verified (AUC ~1.00 on
+  all heads, quantized accuracy ≥ 99.7%).
+- **6 new checks** — layout tables, missing canonical URL, autoplaying media,
+  generic "click here" link text, empty links/buttons with no accessible name,
+  password-field autocomplete hints.
+- Everything from v2 (SRI, sandboxed iframes, CLS, form labels, scan history)
+  and v1 is still included.
 
 ## What it detects
 
@@ -34,13 +33,15 @@ Live instance: https://bughunter-website-scanner.netlify.app
 - **v2:** Subresource Integrity (SRI), unsandboxed iframes, `javascript:` links,
   duplicate DOM IDs, image width/height (CLS), unlabeled form inputs,
   meta-refresh redirects, inline-handler audit
+- **v3:** layout tables, missing canonical URL, autoplaying media,
+  generic link text, empty links/buttons, password-field autocomplete hints
 - Technology detection (WordPress, React, Laravel, Cloudflare, …)
 - 0–100 score, severity-grouped findings, fix + copy-paste code for every issue,
   JSON report export, scan history
 
-**AI layer — 2,373,700 parameters (v2)**
+**AI layer — 3,837,028 parameters (v3)**
 - Multi-label neural network: `2560 hashed bag-of-tokens (FNV-1a) + 48 engineered
-  features → 768 → 384 → 192 → 4` sigmoid heads
+  features → 1152 → 576 → 288 → 4` sigmoid heads
 - Outputs: phishing/scam, malware/compromise, outdated stack, poor quality probabilities
 - Trained offline (`train_ai.py`) by distilling expert security heuristics into the
   network on a synthetic corpus, with noise-token and missing-data augmentation

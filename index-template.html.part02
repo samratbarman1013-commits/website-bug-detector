@@ -1,4 +1,44 @@
-+ host + " …", "info");
+&& robots.code === 200 && !/sitemap:/i.test(robots.body)) {
+    const sm = await fetchWithStatus(base + "/sitemap.xml");
+    if (!sm || sm.code !== 200) {
+      addFinding("info", "No sitemap found", "SEO",
+        "Sitemaps help search engines discover all your pages.",
+        "Generate a sitemap and reference it in robots.txt.",
+        "Sitemap: https://example.com/sitemap.xml");
+    }
+  }
+}
+
+/* ============================== orchestration ============================== */
+
+async function runScan(rawUrl) {
+  FINDINGS = [];
+  TECH = [];
+  window.__AI = null;
+  TERM.innerHTML = "";
+  $("findings").innerHTML = "";
+  $("findings").style.display = "none";
+  $("summary").style.display = "none";
+  $("techBox").style.display = "none";
+  TERM.style.display = "block";
+  document.querySelector(".progress-track").style.display = "block";
+  $("scanBtn").disabled = true;
+  $("scanBtn").textContent = "SCANNING…";
+
+  let host = rawUrl.trim().replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
+  if (!host || !/\./.test(host)) {
+    alert("Please enter a valid domain, e.g. example.com");
+    $("scanBtn").disabled = false;
+    $("scanBtn").textContent = "▶ RUN SCAN";
+    return;
+  }
+  const httpsUrl = "https://" + host + "/";
+  const httpUrl  = "http://" + host + "/";
+  setProgress(5);
+
+  /* 1. reachability + TLS */
+  log("$ bughunter scan " + host, "info");
+  log("[*] Resolving and probing https://" + host + " …", "info");
   const httpsOk = await probeReachable(httpsUrl);
   let httpOk = false;
   if (httpsOk) log("[+] HTTPS reachable — TLS working", "ok");
@@ -209,7 +249,7 @@ function renderReport(host, finalUrl) {
 }
 
 /* ============================== AI risk model ============================== */
-/* 2,373,700-parameter multi-label neural net, int8-quantized, embedded below.
+/* 3,837,028-parameter multi-label neural net, int8-quantized, embedded below.
    Input : 2560 hashed bag-of-tokens (FNV-1a) + 48 engineered numeric features
    Output: [phishing, malware, outdated, quality] probabilities. */
 
