@@ -1,5 +1,4 @@
-ium", "No Strict-Transport-Security (HSTS) header",
-      "Without HSTS a user can be tricked into visiting the site over plain HTTP (SSL-strip attacks).",
+ "Without HSTS a user can be tricked into visiting the site over plain HTTP (SSL-strip attacks).",
       "Enable HSTS once you are sure HTTPS works for all subdomains.",
       'Strict-Transport-Security: max-age=31536000; includeSubDomains'],
     ["x-frame-options", "low", "No X-Frame-Options / frame-ancestors protection",
@@ -411,6 +410,9 @@ async function runScan(rawUrl) {
   TECH = [];
   window.__AI = null;
   TERM.innerHTML = "";
+  $("thoughtsBody").innerHTML = "";
+  THOUGHTS_N = 0;
+  $("thoughtsMeta").textContent = "live reasoning trace";
   $("findings").innerHTML = "";
   $("findings").style.display = "none";
   $("summary").style.display = "none";
@@ -432,6 +434,7 @@ async function runScan(rawUrl) {
   setProgress(5);
 
   /* 1. reachability + TLS */
+  thought("PLAN", "Scanning " + host + ". Plan: probe TLS → read the source → rule engine (30+ checks) → " + AI_MODEL.params.toLocaleString() + "-parameter AI → sensitive-file probes → final verdict.");
   log("$ bughunter scan " + host, "info");
   log("[*] Resolving and probing https://" + host + " …", "info");
   const httpsOk = await probeReachable(httpsUrl);
@@ -460,6 +463,7 @@ async function runScan(rawUrl) {
     TERM.style.display = "block";
     return;
   }
+  thought("TLS", isHttps ? "HTTPS answered — TLS works. Mixed-content and HSTS checks are meaningful here." : "HTTPS is dead; plain HTTP answered. That's already a finding by itself — everything, including any login, travels unencrypted.");
   log("[*] Fetching page source for analysis …", "info");
   setProgress(35);
 
@@ -473,6 +477,7 @@ async function runScan(rawUrl) {
   } else {
     log("[+] Retrieved " + page.html.length.toLocaleString() + " bytes of HTML" + (page.via !== "direct" ? " (via proxy)" : ""), "ok");
   }
+  thought("SOURCE", page ? ("Read " + page.html.length.toLocaleString() + " bytes of HTML (" + (page.via === "direct" ? "direct CORS" : "via public proxy") + "). Parsing the DOM and running the rule engine over it.") : "Could not read the page source from this browser — I'll score what the network probes tell me, but the deep content checks are skipped.");
   setProgress(50);
 
   /* 3. headers */
@@ -493,14 +498,30 @@ async function runScan(rawUrl) {
     checkHtml(page.html, finalUrl, isHttps);
     log("[+] Content analysis done", "ok");
   }
+  {
+    const c = {};
+    for (const f of FINDINGS) c[f.sev] = (c[f.sev] || 0) + 1;
+    const cats = {};
+    for (const f of FINDINGS) cats[f.subtitle] = (cats[f.subtitle] || 0) + 1;
+    const topCat = Object.keys(cats).sort((a, b) => cats[b] - cats[a])[0];
+    thought("RULES", "Rule engine finished: " + (FINDINGS.length ? Object.keys(c).map(s => c[s] + " " + s).join(", ") + (topCat ? ". Dominant theme: " + topCat + "." : ".") : "no issues found — clean markup."));
+  }
   /* 4b. AI risk model */
   log("[*] Running embedded AI risk model (" + AI_MODEL.params.toLocaleString() + " parameters, in-browser inference) …", "info");
   try { runAiAnalysis(finalUrl, page); } catch (e) { log("[-] AI analysis skipped: " + e.message, "warn"); }
+  if (window.__AI) {
+    const P = window.__AI.probabilities;
+    thought("AI", "Neural net verdict: phishing " + Math.round((P["Phishing / scam"] || 0) * 100) + "%, malware " + Math.round((P["Malware / compromise"] || 0) * 100) + "%, outdated " + Math.round((P["Outdated & insecure stack"] || 0) * 100) + "%, poor quality " + Math.round((P["Poor quality / SEO"] || 0) * 100) + "%. Strongest signals: " + (window.__AI.signals.slice(0, 4).join(", ") || "n/a") + ".");
+  }
   setProgress(75);
 
   /* 5. sensitive files */
   log("[*] Checking for exposed sensitive files (/.env, /.git/config …) …", "info");
   await checkSensitiveFiles(finalUrl);
+  {
+    const exposed = FINDINGS.filter(f => f.subtitle === "Sensitive data exposure (CWE-200)");
+    thought("FILES", "Probed /.env, /.git/config and /.DS_Store — " + (exposed.length ? "⚠ " + exposed.map(f => f.title.replace("Exposed ", "")).join(", ") + ". Rotate those secrets immediately." : "none of the classic sensitive files are exposed."));
+  }
   setProgress(85);
 
   /* 6. robots + sitemap */
@@ -509,6 +530,12 @@ async function runScan(rawUrl) {
   setProgress(95);
   await sleep(250);
 
+  {
+    const sc = scoreFromFindings();
+    const order = ["critical", "high", "medium", "low"];
+    const top = order.flatMap(s => FINDINGS.filter(f => f.sev === s)).slice(0, 2);
+    thought("VERDICT", "Weighing everything: " + FINDINGS.length + " finding(s), deductions of 25/14/7/3 by severity → final score " + sc + "/100." + (top.length ? " If I owned this site, I'd start with: " + top.map(f => f.title).join("; ") + "." : " Nothing urgent here — keep dependencies updated and re-scan after changes."));
+  }
   log("[✓] Scan complete — " + FINDINGS.length + " finding(s)", "ok");
   setProgress(100);
 
@@ -521,36 +548,8 @@ function setProgress(pct) {
   $("progressFill").style.width = pct + "%";
 }
 
-/* ============================== rendering ============================== */
+/* ============================== thoughts view (v4) ============================== */
 
-const SEV_ORDER = ["critical", "high", "medium", "low", "info"];
-const SEV_LABEL = { critical: "CRITICAL", high: "HIGH", medium: "MEDIUM", low: "LOW", info: "INFO" };
-
-function scoreFromFindings() {
-  let s = 100;
-  for (const f of FINDINGS) {
-    if (f.sev === "critical") s -= 25;
-    else if (f.sev === "high") s -= 14;
-    else if (f.sev === "medium") s -= 7;
-    else if (f.sev === "low") s -= 3;
-  }
-  return Math.max(0, Math.min(100, s));
-}
-
-function renderReport(host, finalUrl) {
-  const score = scoreFromFindings();
-  const counts = {};
-  for (const f of FINDINGS) counts[f.sev] = (counts[f.sev] || 0) + 1;
-
-  /* gauge */
-  const arc = $("gaugeArc");
-  const C = 2 * Math.PI * 56;
-  arc.style.strokeDashoffset = C - (C * score / 100);
-  arc.setAttribute("stroke", score >= 80 ? "#34d399" : score >= 60 ? "#facc15" : score >= 40 ? "#fb923c" : "#f87171");
-  $("scoreVal").textContent = score;
-
-  $("targetUrl").textContent = "target: " + finalUrl;
-
-  /* pills */
-  const pillRow = $("pillRow");
-  pillRow.in
+let THOUGHTS_N = 0;
+let THOUGHTS_OPEN = true;
+function though
