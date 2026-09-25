@@ -79,11 +79,11 @@ def gen_batch(n):
     host_dig = rng.uniform(0, 0.08, n)
     host_hyph = rng.integers(0, 2, n).astype(float)
     r = R(); subd = np.where(r < .5, 0, np.where(r < .83, 1, 2)).astype(float)
-    ip = np.zeros(n); sus_tld = np.zerosn); puny = np.zeros(n)
+    ip = np.zeros(n); sus_tld = np.zeros(n); puny = np.zeros(n)
     https = (R() < 0.85).astype(float)
     path_depth = rng.integers(0, 4, n).astype(float)
     query_len = rng.uniform(0, 40, n)
-    at = np.zerosn); cred_url = np.zerosn)
+    at = np.zeros(n); cred_url = np.zeros(n)
 
     # ---------------- page base ----------------
     has_title = (R() < .93).astype(float); title_len = rng.uniform(8, 70, n)
