@@ -164,120 +164,274 @@
     padding: 8px 14px; font-size: 13px; font-family: var(--mono);
     display: flex; align-items: center; gap: 8px;
   }
-  .chip .dot { width: 7px; height:ÜÈ›Ü™\‹\˜Y]\ÎˆL	NÈ˜XÚÙÜ›İ[™ˆ˜\ŠKXŞX[ŠNÈB‚ˆÊˆš[™[™ÜÈ
-‹ÂˆÙš[™[™ÜÈÈX\™Ú[‹]ÜˆÌÈ\Ü^Nˆ›Û™NÈBˆœÙXİ[Û‹]]HÂˆ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈ›Û\Ú^™NˆM\È]\‹\ÜXÚ[™Îˆ\Âˆ^]˜[œÙ›Ü›Nˆ\\˜Ø\ÙNÈX\™Ú[ˆœMÈ\Ü^Nˆ›^È[YÛ‹Z][\ÎˆÙ[\ÈØ\ˆLÂˆBˆœÙXİ[Û‹]]N˜Y\ˆÈÛÛ[ˆˆÈ›^ˆNÈZYÚˆ\È˜XÚÙÜ›İ[™ˆ˜\ŠKX›Ü™\ŠNÈBˆ™š[™[™ÈÂˆ˜XÚÙÜ›İ[™ˆ˜\ŠKXØ\™
-NÂˆ›Ü™\ˆ\ÛÛY˜\ŠKX›Ü™\ŠNÂˆ›Ü™\‹\˜Y]\ÎˆL\ÂˆX\™Ú[‹X›İÛNˆLœÂˆİ™\™›İÎˆY[Âˆ˜[œÚ][Ûˆ›Ü™\ˆŒM\ÎÂˆBˆ™š[™[™Îšİ™\ˆÈ›Ü™\‹XÛÛÜˆÌ™MŒÈBˆ™š[™[™ËZXYÂˆY[™ÎˆMœNÂˆ\Ü^Nˆ›^Âˆ[YÛ‹Z][\ÎˆÙ[\ÂˆØ\ˆMÂˆİ\œÛÜˆÚ[\Âˆ\Ù\‹\Ù[Xİˆ›Û™NÂˆBˆœÙ]ˆÂˆ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈ›Û\Ú^™NˆL\È›Û]ÙZYÚˆÌÈ]\‹\ÜXÚ[™Îˆ\ÂˆY[™ÎˆLÈ›Ü™\‹\˜Y]\Îˆ\È^]˜[œÙ›Ü›Nˆ\\˜Ø\ÙNÈ›^\Úš[šÎˆÈÚYˆÎÈ^X[YÛˆÙ[\ÂˆBˆœÙ]‹˜Üš]XØ[È˜XÚÙÜ›İ[™ˆ™Ø˜JLLËLLËŒMJNÈÛÛÜˆ˜\ŠK\™Y
-NÈBˆœÙ]‹šYÚÈ˜XÚÙÜ›İ[™ˆ™Ø˜JLKM‹ŒŒMJNÈÛÛÜˆ˜\ŠK[Ü˜[™ÙJNÈBˆœÙ]‹›YY][HÈ˜XÚÙÜ›İ[™ˆ™Ø˜JLŒŒKŒLŠNÈÛÛÜˆ˜\ŠK^Y[İÊNÈBˆœÙ]‹›İÈÈ˜XÚÙÜ›İ[™ˆ™Ø˜JM‹MKLŒLŠNÈÛÛÜˆ˜\ŠKX›YJNÈBˆœÙ]‹š[™›ÈÈ˜XÚÙÜ›İ[™ˆ™Ø˜JLŒËLÎKMŒËŒMJNÈÛÛÜˆ˜\ŠK[]]Y
-NÈBˆ™š[™[™Ë]]HÈ›^ˆNÈ›Û]ÙZYÚˆŒÈ›Û\Ú^™NˆM\ÈBˆ™š[™[™Ë]]HÛX[È\Ü^Nˆ›ØÚÎÈÛÛÜˆ˜\ŠK[]]Y
-NÈ›Û]ÙZYÚˆÈ›Û\Ú^™NˆL‹\ÈX\™Ú[‹]ÜˆÜÈBˆ˜Ú]ˆÈÛÛÜˆ˜\ŠK[]]Y
-NÈ˜[œÚ][Ûˆ˜[œÙ›Ü›HŒœÎÈ›Û\Ú^™NˆLœÈBˆ™š[™[™Ë›Ü[ˆ˜Ú]ˆÈ˜[œÙ›Ü›Nˆ›İ]JLYÊNÈBˆ™š[™[™ËX›ÙHÈ\Ü^Nˆ›Û™NÈY[™ÎˆNNÈ›Ü™\‹]Üˆ\ÛÛY˜\ŠKX›Ü™\ŠNÈBˆ™š[™[™Ë›Ü[ˆ™š[™[™ËX›ÙHÈ\Ü^Nˆ›ØÚÎÈBˆ™š[™[™ËX›ÙH™\ØÈÈY[™ÎˆMœÈ›Û\Ú^™NˆMÈ[™KZZYÚˆKNÈÛÛÜˆØXÍ™NÈBˆ™š^[X™[Âˆ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈ›Û\Ú^™NˆLK\ÈÛÛÜˆ˜\ŠKYÜ™Y[ŠNÂˆ^]˜[œÙ›Ü›Nˆ\\˜Ø\ÙNÈ]\‹\ÜXÚ[™Îˆ\ÈX\™Ú[ˆLœÂˆ\Ü^Nˆ›^È[YÛ‹Z][\ÎˆÙ[\ÈØ\ˆÂˆBˆ™š^[X™[˜™Y›Ü™HÈÛÛ[ˆ¸¥®ÈBˆ™K˜ÛÙHÂˆ˜XÚÙÜ›İ[™ˆÌŒLLÈ›Ü™\ˆ\ÛÛY˜\ŠKX›Ü™\ŠNÈ›Ü™\‹\˜Y]\ÎˆÂˆY[™ÎˆMMœÈİ™\™›İË^ˆ]]ÎÈ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÂˆ›Û\Ú^™NˆL‹È[™KZZYÚˆKÈÛÛÜˆØMY™™ÈÜÚ][Ûˆ™[]]™NÂˆÚ]K\ÜXÙNˆ™NÂˆBˆ˜ÛÜKXˆÂˆÜÚ][ÛˆXœÛÛ]NÈÜˆÈšYÚˆÂˆ˜XÚÙÜ›İ[™ˆ˜\ŠKX™ËLŠNÈ›Ü™\ˆ\ÛÛY˜\ŠKX›Ü™\ŠNÈÛÛÜˆ˜\ŠK[]]Y
-NÂˆ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈ›Û\Ú^™NˆL\ÈY[™ÎˆLÂˆ›Ü™\‹\˜Y]\Îˆ\Èİ\œÛÜˆÚ[\ÂˆBˆ˜ÛÜKXšİ™\ˆÈÛÛÜˆ˜\ŠK]^
-NÈ›Ü™\‹XÛÛÜˆ˜\ŠKXŞX[ŠNÈBˆ››ËZ\ÜİY\ÈÈ^X[YÛˆÙ[\ÈY[™ÎˆÈÛÛÜˆ˜\ŠKYÜ™Y[ŠNÈ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈB‚ˆÊˆRH[™[
-‹ÂˆØZT[™[È\Ü^Nˆ›Û™NÈX\™Ú[‹]ÜˆÈBˆ˜ZKXØ\™È˜XÚÙÜ›İ[™ˆ˜\ŠKXØ\™
-NÈ›Ü™\ˆ\ÛÛY˜\ŠKX›Ü™\ŠNÈ›Ü™\‹\˜Y]\ÎˆLœÈY[™ÎˆÈBˆ˜ZKZXYÈ\Ü^Nˆ›^È\İYKXÛÛ[ˆÜXÙKX™]ÙY[È[YÛ‹Z][\ÎˆÙ[\ÈØ\ˆLœÈ›^]Ü˜\ˆÜ˜\ÈX\™Ú[‹X›İÛNˆNÈBˆ˜ZKZXYÈÈ›Û\Ú^™NˆMœÈ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈ]\‹\ÜXÚ[™Îˆ\ÈBˆ˜ZKX˜YÙHÈ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈ›Û\Ú^™NˆLK\ÈÛÛÜˆ˜\ŠKXŞX[ŠNÈ˜XÚÙÜ›İ[™ˆ™Ø˜JM‹NKŒ
-NÈ›Ü™\ˆ\ÛÛY™Ø˜JM‹NKŒÊNÈY[™ÎˆLÈ›Ü™\‹\˜Y]\ÎˆNN\ÈBˆ˜ZK\›İÈÈ\Ü^Nˆ›^È[YÛ‹Z][\ÎˆÙ[\ÈØ\ˆMÈX\™Ú[‹X›İÛNˆMÈBˆ˜ZK\›İÈ˜ZK[X™[ÈÚYˆŒŒÈ›Û\Ú^™NˆLË\È›^\Úš[šÎˆÈBˆ˜ZK]˜XÚÈÈ›^ˆNÈZYÚˆLÈ˜XÚÙÜ›İ[™ˆ˜\ŠKX™ËLŠNÈ›Ü™\‹\˜Y]\Îˆ\Èİ™\™›İÎˆY[ÈBˆ˜ZKYš[ÈZYÚˆL	NÈÚYˆ	NÈ›Ü™\‹\˜Y]\Îˆ\È˜[œÚ][ÛˆÚYÈX\ÙNÈ˜XÚÙÜ›İ[™ˆ˜\ŠKYÜ™Y[ŠNÈBˆ˜ZK\İÈ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈ›Û\Ú^™NˆLÜÈÚYˆLœÈ^X[YÛˆšYÚÈBˆ˜ZK[]™[È›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈ›Û\Ú^™NˆL\È›Û]ÙZYÚˆÌÈY[™ÎˆÜ\È›Ü™\‹\˜Y]\ÎˆÈ]\‹\ÜXÚ[™Îˆ\ÈÚYˆœÈ^X[YÛˆÙ[\È›^\Úš[šÎˆÈBˆ˜ZK[]™[›İÈÈ˜XÚÙÜ›İ[™ˆ™Ø˜JL‹ŒLKMLËŒLŠNÈÛÛÜˆ˜\ŠKYÜ™Y[ŠNÈBˆ˜ZK[]™[›[ÙÈ˜XÚÙÜ›İ[™ˆ™Ø˜JLŒŒKŒLŠNÈÛÛÜˆ˜\ŠK^Y[İÊNÈBˆ˜ZK[]™[™[HÈ˜XÚÙÜ›İ[™ˆ™Ø˜JLKM‹ŒŒMJNÈÛÛÜˆ˜\ŠK[Ü˜[™ÙJNÈBˆ˜ZK[]™[šHÈ˜XÚÙÜ›İ[™ˆ™Ø˜JLLËLLËŒMJNÈÛÛÜˆ˜\ŠK\™Y
-NÈBˆ˜ZK\ÚYË]]HÈ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈ›Û\Ú^™NˆLK\ÈÛÛÜˆ˜\ŠK[]]Y
-NÈ^]˜[œÙ›Ü›Nˆ\\˜Ø\ÙNÈ]\‹\ÜXÚ[™Îˆ\ÈX\™Ú[ˆNLÈBˆ˜ZKXÚ\ÈÈ\Ü^Nˆ›^È›^]Ü˜\ˆÜ˜\ÈØ\ˆÈBˆ˜ZKXÚ\È›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈ›Û\Ú^™NˆLœÈ˜XÚÙÜ›İ[™ˆ™Ø˜JM‹NKŒŠNÈ›Ü™\ˆ\ÛÛY™Ø˜JM‹NKŒJNÈÛÛÜˆØMY™™È›Ü™\‹\˜Y]\ÎˆœÈY[™Îˆ\LÈBˆ˜ZK[›İHÈX\™Ú[‹]ÜˆMœÈÛÛÜˆ˜\ŠK[]]Y
-NÈ›Û\Ú^™NˆLœÈ[™KZZYÚˆKÈB‚ˆ™\ØÛZ[Y\ˆÂˆX\™Ú[‹]ÜˆœÈ^X[YÛˆÙ[\ÈÛÛÜˆ˜\ŠK[]]Y
-NÈ›Û\Ú^™NˆL‹\Âˆ[™KZZYÚˆKÎÈ›Ü™\‹]Üˆ\ÛÛY˜\ŠKX›Ü™\ŠNÈY[™Ë]ÜˆŒœÂˆBˆ›Ûİ\ˆÈ^X[YÛˆÙ[\ÈÛÛÜˆÍMXMÌÈ›Û\Ú^™NˆLœÈX\™Ú[‹]ÜˆœÈ›ÛY˜[Z[Nˆ˜\ŠK[[Û›ÊNÈBÜİ[O‚ÚXY‚›ÙO‚]ˆÛ\ÜÏHÜ˜\‚‚ˆXY\‚ˆ]ˆÛ\ÜÏH›ÙÛÈÜ[ˆÛ\ÜÏH˜œ˜XÚÙ]–ÏÜÜ[ˆYÒ[\ˆÜ[ˆÛ\ÜÏH˜œ˜XÚÙ]—OÜÜ[Ü[ˆÛ\ÜÏH˜İ\œÛÜˆÜÜ[Ù]‚ˆÛ\ÜÏHYÛ[™H•ÙXœÚ]HYÈ	ˆ[™\˜Xš[]H]XİÜˆ8 %ØØ[œÈ›Üˆ™X[\ÜİY\È[™ÚİÜÈ[İH™^XİHİÈÈš^[OØÜ‚ˆÚXY\‚‚ˆ]ˆÛ\ÜÏHœØØ[˜˜\ˆ‚ˆ]ˆÛ\ÜÏHœØØ[‹\›İÈ‚ˆ]ˆÛ\ÜÏH\›]Ü˜\‚ˆÜ[ˆÛ\ÜÏHœ™Yš^šÎ‹ËÏÜÜ[‚ˆ[œ]YH\›ˆ\OH^ˆXÙZÛ\H™^[\K˜ÛÛHˆÜ[ÚXÚÏH™˜[ÙHˆ]]ØÛÛ\]OH›Ù™ˆ‚ˆÙ]‚ˆ]ÛˆYHœØØ[ˆ¸¥­ˆ•SˆĞĞSØ]Û‚ˆÙ]‚ˆ]ˆÛ\ÜÏHš[‰[\ˆHT“8 %ÚXÚÜÎˆ™XXÚXš[]H0­ÈËÕÈ0­ÈÙXİ\š]HXY\œÈ0­ÈÙ[œÚ]]™Hš[H^Üİ\™H0­Èİ]]YXœ˜\šY\È0­ÈZ^YÛÛ[0­ÈÑSÈ	ˆS]X[]H0­ÈRHš\ÚÈ[Ù[
-KSH\˜[\ÊOÙ]‚ˆ]ˆYH\›Z[˜[Ù]‚ˆ]ˆÛ\ÜÏHœ›ÙÜ™\ÜË]˜XÚÈ]ˆÛ\ÜÏHœ›ÙÜ™\ÜËYš[ˆYHœ›ÙÜ™\ÜÑš[Ù]Ù]‚ˆÙ]‚‚ˆ]ˆYHœİ[[X\H‚ˆ]ˆÛ\ÜÏHœØÛÜ™KXØ\™‚ˆ]ˆÛ\ÜÏH™Ø]YÙH‚ˆİ™ÈÚYHŒLÌˆZYÚHŒLÌˆšY]Ğ›ŞHŒLÌLÌ‚ˆÚ\˜ÛHŞHHˆŞOHHˆHMˆˆš[H››Û™Hˆİ›ÚÙOHˆÌXLÍˆˆİ›ÚÙK]ÚYHŒL‹Ï‚ˆÚ\˜ÛHYH™Ø]YÙP\˜ÈˆŞHHˆŞOHHˆHMˆˆš[H››Û™Hˆİ›ÚÙOHˆÌÍÎNHˆİ›ÚÙK]ÚYHŒL‚ˆİ›ÚÙK[[™XØ\Hœ›İ[™ˆİ›ÚÙKY\Ú\œ˜^OHŒÍLKˆˆİ›ÚÙKY\ÚÙ™œÙ]HŒÍLKˆ‚ˆİ[OH˜[œÚ][Ûˆİ›ÚÙKY\ÚÙ™œÙ]\ÈX\ÙKİ›ÚÙH\ÎÈ‹Ï‚ˆÜİ™Ï‚ˆ]ˆÛ\ÜÏH˜[ˆYHœØÛÜ™U˜[¸ $ÏØÜ[”ØÛÜ™OÜÜ[Ù]‚ˆÙ]‚ˆ]ˆÛ\ÜÏH˜Ûİ[È‚ˆ”ØØ[ˆ™\ÜÚ‚ˆ]ˆÛ\ÜÏH\™Ù]ˆYH\™Ù]\›Ù]‚ˆ]ˆÛ\ÜÏHœ[\›İÈˆYHœ[›İÈÙ]‚ˆ]ˆÛ\ÜÏHœİ[[X\KXXİ[ÛœÈ‚ˆ]ÛˆÛ\ÜÏH˜ŒˆˆYH™^Üˆ¸«!ÈİÛ›ØY™\Ü
-”ÓÓŠOØ]Û‚ˆ]ÛˆÛ\ÜÏH˜ŒˆˆYHœ™\ØØ[ˆ¸¡®È™\ØØ[Ø]Û‚ˆÙ]‚ˆÙ]‚ˆÙ]‚ˆÙ]‚‚ˆ]ˆYHXÚ›Ş‚ˆÏ‘]XİYXÚ›ÛÙÚY\ÏÚÏ‚ˆ]ˆÛ\ÜÏH˜Ú\ÈˆYH˜Ú\ÈÙ]‚ˆÙ]‚‚ˆ]ˆYH˜ZT[™[‚ˆ]ˆÛ\ÜÏH˜ZKXØ\™‚ˆ]ˆÛ\ÜÏH˜ZKZXY‚ˆÏRHš\ÚÈ[˜[\Ú\ÏÚÏ‚ˆÜ[ˆÛ\ÜÏH˜ZKX˜YÙHŒKSK\\˜[Y]\ˆ™]\˜[™]ÛÜšÈ0­È[\]X[^™Y0­È[œÈØØ[OÜÜ[‚ˆÙ]‚ˆ]ˆYH˜ZP˜\œÈÙ]‚ˆ]ˆÛ\ÜÏH˜ZK\ÚYË]]H•ÜÛÛšX][™ÈÚYÛ˜[ÏÙ]‚ˆ]ˆÛ\ÜÏH˜ZKXÚ\ÈˆYH˜ZTÚYÛ˜[ÈÙ]‚ˆ]ˆÛ\ÜÏH˜ZK[›İH‚ˆHRH^Y\ˆ\ÈHKLM\\˜[Y]\ˆ][K[X™[™]\˜[™]ÛÜšÈ
-‹MŒ\ÚY˜YË[Ù‹]ÚÙ[œÈ
-Èˆ[™Ú[™Y\™Y™X]\™\È8¡¤ˆLLˆ8¡¤ˆMˆ8¡¤ˆL8¡¤ˆİ]]ÊH˜Z[™YÙ™›[™HH\İ[[™È^\ÙXİ\š]Bˆ]\š\İXÜÈ[ÈH™]ÛÜšË[ˆ[\]X[^™Y[™[X™YY[ˆ\ÈYÙKˆ[™™\™[˜ÙH[œÈL	BˆØØ[H8 %›È]HX]™\È[İ\ˆœ›İÜÙ\‹ˆ]ÛÛ\[Y[Ë[™Ù\È›İ™\XÙKH[KX˜\ÙYš[™[™ÜË‚ˆÙ]‚ˆÙ]‚ˆÙ]‚‚ˆ]ˆYH™š[™[™ÜÈÙ]‚‚ˆÛ\ÜÏH™\ØÛZ[Y\ˆ‚ˆ8¦¨\ÙH\ÈÛÛÛ›HÛˆÙXœÚ]\È[İHİÛˆÜˆ]™H^XÚ]\›Z\ÜÚ[ÛˆÈ\İˆ\È\ÈH\ÜÚ]™Kœ›İÜÙ\‹\ÚYBˆØØ[›™\ˆ8 %]™]Ú\ÈX›XÛH™XXÚX›HYÙ\ÈÛ›H[™Ø[››İ™\XÙHH[[™]˜][Ûˆ\İ‚ˆÜˆ›Ûİ\YÒ[\ˆ0­ÈÚ[™ÛKYš[HØØ[›™\ˆ
-È[X™YYKSK\\˜[Y]\ˆRH0­È[œÈL	H[ˆ[İ\ˆœ›İÜÙ\Ù›Ûİ\‚Ù]‚‚ØÜš\‚ˆ\ÙHİšXİÂ‚‹ÊˆOOOOOOOOOOOOOOOOOOOOOOOOOOOOOH[\œÈOOOOOOOOOOOOOOOOOOOOOOOOOOOOOH
-‹Â‚˜ÛÛœİ	H
-Y
-HOˆØİ[Y[™Ù][[Y[RY
-Y
-NÂ˜ÛÛœİT“HH	
-\›Z[˜[ŠNÂ‚™[˜İ[ÛˆÙÊ\ÙËÛÈHš[™›ÈŠHÂˆÛÛœİ[™HHØİ[Y[˜Ü™X]Q[[Y[
-™]ˆŠNÂˆ[™K˜Û\ÜÓ˜[YHHÛÎÂˆ[™K^ÛÛ[H\ÙÎÂˆT“K˜\[™Ú[
-[™JNÂˆT“KœØÜ›ÛÜHT“KœØÜ›ÛZYÚÂŸB‚™[˜İ[ÛˆÛY\
-\ÊHÈ™]\›ˆ™]È›ÛZ\ÙJˆOˆÙ][Y[İ]
-‹\ÊJNÈB‚™[˜İ[ÛˆÚ][Y[İ]
-›ÛZ\ÙQ˜XİÜK\ÊHÂˆ™]\›ˆ›ÛZ\ÙKœ˜XÙJÂˆ›ÛZ\ÙQ˜XİÜJ
-KˆÛY\
-\ÊK[Š
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); }
 
-HOˆÈ›İÈ™]È\œ›ÜŠ[Y[İ]ŠNÈJBˆJNÂŸB‚™[˜İ[Ûˆ\ØÊÊHÂˆÛÛœİHØİ[Y[˜Ü™X]Q[[Y[
-™]ˆŠNÂˆ^ÛÛ[Hİš[™ÊÊNÂˆ™]\›ˆš[›™\’SÂŸB‚‹ÊˆOOOOOOOOOOOOOOOOOOOOOOOOOOOOOHØØ[ˆİ]HOOOOOOOOOOOOOOOOOOOOOOOOOOOOOH
-‹Â‚›]’S‘S‘ÔÈH×NÂ›]PÒH×NÂ›]TÕÔ‘TÔ•H[Â‚™[˜İ[ÛˆYš[™[™ÊÙ]‹]KİX]K\ØËš^ÛÙJHÂˆ’S‘S‘ÔËœ\Ú
-ÈÙ]‹]KİX]K\ØËš^ÛÙNˆÛÙH[JNÂŸB‚‹ÊˆOOOOOOOOOOOOOOOOOOOOOOOOOOOOOH™]ÛÜšÈ^Y\ˆOOOOOOOOOOOOOOOOOOOOOOOOOOOOOH
-‹Â‚‹ËÈ\™Xİ›ËXÛÜœÈ›Ø™Nˆ™\ÛÛ™\ÈYˆHÜİ\È™XXÚX›H]™]ÛÜšÈ]™[‹ËÈ
-”È
-ÈÔ
-ÈÊK™Z™XİÈİ\Ú\ÙKˆ›ÙKÚXY\œÈ\™HÜ\]YK‚˜\Ş[˜È[˜İ[Ûˆ›Ø™T™XXÚX›J\›\ÈHLŒ
-HÂˆÛÛœİİ›H™]ÈX›ÜÛÛ›Û\Š
-NÂˆÛÛœİHÙ][Y[İ]
+  /* Findings */
+  #findings { margin-top: 30px; display: none; }
+  .section-title {
+    font-family: var(--mono); font-size: 15px; letter-spacing: 1px;
+    text-transform: uppercase; margin: 26px 0 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .finding {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: border .15s;
+  }
+  .finding:hover { border-color: #2e4260; }
+  .finding-head {
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .sev {
+    font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    padding: 4px 10px; border-radius: 5px; text-transform: uppercase; flex-shrink: 0; width: 78px; text-align: center;
+  }
+  .sev.critical { background: rgba(248,113,113,.15); color: var(--red); }
+  .sev.high { background: rgba(251,146,60,.15); color: var(--orange); }
+  .sev.medium { background: rgba(250,204,21,.12); color: var(--yellow); }
+  .sev.low { background: rgba(96,165,250,.12); color: var(--blue); }
+  .sev.info { background: rgba(123,139,163,.15); color: var(--muted); }
+  .finding-title { flex: 1; font-weight: 600; font-size: 15px; }
+  .finding-title small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; margin-top: 3px; }
+  .chev { color: var(--muted); transition: transform .2s; font-size: 12px; }
+  .finding.open .chev { transform: rotate(90deg); }
+  .finding-body { display: none; padding: 0 18px 18px; border-top: 1px solid var(--border); }
+  .finding.open .finding-body { display: block; }
+  .finding-body .desc { padding: 14px 0 6px; font-size: 14px; line-height: 1.65; color: #b9c6d9; }
+  .fix-label {
+    font-family: var(--mono); font-size: 11.5px; color: var(--green);
+    text-transform: uppercase; letter-spacing: 1px; margin: 12px 0 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .fix-label::before { content: "â–¸"; }
+  pre.code {
+    background: #060a10; border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; font-family: var(--mono);
+    font-size: 12.8px; line-height: 1.6; color: #a5d6ff; position: relative;
+    white-space: pre;
+  }
+  .copy-btn {
+    position: absolute; top: 8px; right: 8px;
+    background: var(--bg-2); border: 1px solid var(--border); color: var(--muted);
+    font-family: var(--mono); font-size: 11px; padding: 4px 10px;
+    border-radius: 5px; cursor: pointer;
+  }
+  .copy-btn:hover { color: var(--text); border-color: var(--cyan); }
+  .no-issues { text-align: center; padding: 40px; color: var(--green); font-family: var(--mono); }
 
+  /* AI panel */
+  #aiPanel { display: none; margin-top: 24px; }
+  .ai-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .ai-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .ai-head h3 { font-size: 16px; font-family: var(--mono); letter-spacing: .5px; }
+  .ai-badge { font-family: var(--mono); font-size: 11.5px; color: var(--cyan); background: rgba(56,189,248,.08); border: 1px solid rgba(56,189,248,.3); padding: 4px 10px; border-radius: 999px; }
+  .ai-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .ai-row .ai-label { width: 220px; font-size: 13.5px; flex-shrink: 0; }
+  .ai-track { flex: 1; height: 10px; background: var(--bg-2); border-radius: 5px; overflow: hidden; }
+  .ai-fill { height: 100%; width: 0%; border-radius: 5px; transition: width .8s ease; background: var(--green); }
+  .ai-pct { font-family: var(--mono); font-size: 13px; width: 52px; text-align: right; }
+  .ai-level { font-family: var(--mono); font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 4px; letter-spacing: .5px; width: 82px; text-align: center; flex-shrink: 0; }
+  .ai-level.low { background: rgba(52,211,153,.12); color: var(--green); }
+  .ai-level.mod { background: rgba(250,204,21,.12); color: var(--yellow); }
+  .ai-level.ele { background: rgba(251,146,60,.15); color: var(--orange); }
+  .ai-level.hi  { background: rgba(248,113,113,.15); color: var(--red); }
+  .ai-sig-title { font-family: var(--mono); font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 18px 0 10px; }
+  .ai-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ai-chip { font-family: var(--mono); font-size: 12px; background: rgba(56,189,248,.06); border: 1px solid rgba(56,189,248,.25); color: #a5d6ff; border-radius: 6px; padding: 5px 10px; }
+  .ai-note { margin-top: 16px; color: var(--muted); font-size: 12px; line-height: 1.6; }
 
-HOˆİ›˜X›Ü
+  .disclaimer {
+    margin-top: 46px; text-align: center; color: var(--muted); font-size: 12.5px;
+    line-height: 1.7; border-top: 1px solid var(--border); padding-top: 22px;
+  }
+  footer { text-align: center; color: #4a5a72; font-size: 12px; margin-top: 26px; font-family: var(--mono); }
+</style>
+</head>
+<body>
+<div class="wrap">
 
-K\ÊNÂˆHÂˆ]ØZ]™]Ú
-\›È[ÙNˆ››ËXÛÜœÈ‹ÚYÛ˜[ˆİ›œÚYÛ˜[ØXÚNˆ››Ë\İÜ™H‹™Y\™Xİˆ™›ÛİÈˆJNÂˆ™]\›ˆYNÂˆHØ]Ú
-JHÂˆ™]\›ˆ˜[ÙNÂˆHš[˜[HÈÛX\•[Y[İ]
-
-NÈBŸB‚‹ËÈHÈ™]ÚYÙHÛÛ[ˆ\™XİÓÔ”Èš\œİ[ˆX›XÈ›ŞY\Ë‚˜\Ş[˜È[˜İ[Ûˆ™]ÚYÙJ\›
-HÂˆËÈJH\™Xİ
-ÛÜšÜÈYˆHÚ]HÙ[™ÈÓÔ”ÈXY\œÊBˆHÂˆÛÛœİİ›H™]ÈX›ÜÛÛ›Û\Š
-NÂˆÛÛœİHÙ][Y[İ]
+  <header>
+    <div class="logo"><span class="bracket">[</span> BugHunter <span class="bracket">]</span><span class="cursor"></span></div>
+    <p class="tagline">Website bug & vulnerability detector â€” scans for real issues and shows you <b>exactly how to fix them</b>.</p>
+  </header>
 
+  <div class="scanbar">
+    <div class="scan-row">
+      <div class="url-wrap">
+        <span class="prefix">https://</span>
+        <input id="url" type="text" placeholder="example.com" spellcheck="false" autocomplete="off">
+      </div>
+      <button id="scanBtn">â–¶ RUN SCAN</button>
+    </div>
+    <div class="hint">$ enter a URL â€” checks: reachability Â· HTTPS/TLS Â· security headers Â· sensitive file exposure Â· outdated libraries Â· mixed content Â· SEO & HTML quality Â· AI risk model (1.5M params)</div>
+    <div id="terminal"></div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
 
-HOˆİ›˜X›Ü
+  <div id="summary">
+    <div class="score-card">
+      <div class="gauge">
+        <svg width="130" height="130" viewBox="0 0 130 130">
+          <circle cx="65" cy="65" r="56" fill="none" stroke="#1a2436" stroke-width="10"/>
+          <circle id="gaugeArc" cx="65" cy="65" r="56" fill="none" stroke="#34d399" stroke-width="10"
+                  stroke-linecap="round" stroke-dasharray="351.86" stroke-dashoffset="351.86"
+                  style="transition: stroke-dashoffset 1s ease, stroke .5s;"/>
+        </svg>
+        <div class="val"><b id="scoreVal">â€“</b><span>Score</span></div>
+      </div>
+      <div class="counts">
+        <h2>Scan Report</h2>
+        <div class="target" id="targetUrl"></div>
+        <div class="pill-row" id="pillRow"></div>
+        <div class="summary-actions">
+          <button class="btn2" id="exportBtn">â¬‡ Download report (JSON)</button>
+          <button class="btn2" id="rescanBtn">â†» Rescan</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-KLŒ
-NÂˆÛÛœİ™\ÈH]ØZ]™]Ú
-\›ÈÚYÛ˜[ˆİ›œÚYÛ˜[ØXÚNˆ››Ë\İÜ™HˆJNÂˆÛX\•[Y[İ]
-
-NÂˆÛÛœİXY\œÈHßNÂˆ™\ËšXY\œË™›Ü‘XXÚ
+  <div id="techBox">
+    <h3>Detected Technologies</h3>
+    <div class="chips" id="chips"></div>
+  </div>
 
-‹ÊHOˆÈXY\œÖÚËÓİÙ\Ø\ÙJ
-WHHÈJNÂˆÛÛœİ^H]ØZ]™\Ë^
+  <div id="aiPanel">
+    <div class="ai-card">
+      <div class="ai-head">
+        <h3>AI Risk Analysis</h3>
+        <span class="ai-badge">1.5M-parameter neural network Â· int8-quantized Â· runs locally</span>
+      </div>
+      <div id="aiBars"></div>
+      <div class="ai-sig-title">Top contributing signals</div>
+      <div class="ai-chips" id="aiSignals"></div>
+      <div class="ai-note">
+        The AI layer is a 1,500,548-parameter multi-label neural network (2,560 hashed bag-of-tokens + 48
+        engineered features â†’ 512 â†’ 256 â†’ 128 â†’ 4 outputs) trained offline by distilling expert security
+        heuristics into the network, then int8-quantized and embedded in this page. Inference runs 100%
+        locally â€” no data leaves your browser. It complements, and does not replace, the rule-based findings.
+      </div>
+    </div>
+  </div>
 
-NÂˆ™]\›ˆÈ[ˆ^XY\œËšXNˆ™\™XİˆNÂˆHØ]Ú
-JHÈÊˆ˜[›İYÚ
-‹ÈB‚ˆËÈŠHÛÜœÜ›ŞKš[ÂˆHÂˆÛÛœİˆH]ØZ]Ú][Y[İ]
+  <div id="findings"></div>
 
+  <p class="disclaimer">
+    âš  Use this tool only on websites you own or have explicit permission to test. This is a passive, browser-side
+    scanner â€” it fetches publicly reachable pages only and cannot replace a full penetration test.
+  </p>    <footer>BugHunter Â· single-file scanner + embedded 1.5M-parameter AI Â· runs 100% in your browser</footer>
+</div>
 
-HO‚ˆ™]Ú
-šÎ‹ËØÛÜœÜ›ŞKš[ËÏİ\›Hˆ
-È[˜ÛÙUT’PÛÛ\Û™[
-\›
-KÈØXÚNˆ››Ë\İÜ™HˆJKN
-NÂˆYˆ
-‹›ÚÊHÂˆÛÛœİ^H]ØZ]‹^
+<script>
+"use strict";
 
-NÂˆ™]\›ˆÈ[ˆ^XY\œÎˆßKšXNˆœ›ŞLHˆNÂˆBˆHØ]Ú
-JHÈÊˆ˜[›İYÚ
-‹ÈB‚ˆËÈÊH[ÜšYÚ[œÈ”ÓÓˆØ]]Ø^H
-Ú]™\Èİ]\ÈÛÙHÛÊBˆHÂˆÛÛœİˆH]ØZ]Ú][Y[İ]
+/* ============================== helpers ============================== */
 
+const $ = (id) => document.getElementById(id);
+const TERM = $("terminal");
 
-HO‚ˆ™]Ú
-šÎ‹ËØ\K˜[ÜšYÚ[œËÚ[‹ÙÙ]İ\›Hˆ
-È[˜ÛÙUT’PÛÛ\Û™[
-\›
-KÈØXÚNˆ››Ë\İÜ™HˆJKŒ
-NÂˆÛÛœİˆH]ØZ]‹šœÛÛŠ
-NÂˆYˆ
-ˆ	‰ˆ‹˜ÛÛ[ÈOH[
-HÂˆ™]\›ˆÈ[ˆ‹˜ÛÛ[ËXY\œÎˆßKšXNˆœ›ŞLˆ‹İ]\Îˆ‹œİ]\ÈNÂˆBˆHØ]Ú
-JHÈÊˆ˜[›İYÚ
-‹ÈB‚ˆËÈ
-HÛÙ]XœÈ›ŞH˜[˜XÚÂˆHÂˆÛÛœİˆH]ØZ]Ú][Y[İ]
+function log(msg, cls = "info") {
+  const line = document.createElement("div");
+  line.className = cls;
+  line.textContent = msg;
+  TERM.appendChild(line);
+  TERM.scrollTop = TERM.scrollHeight;
+}
 
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-HO‚ˆ™]Ú
-šÎ‹ËØ\K˜ÛÙ]XœË˜ÛÛKİŒKÜ›ŞOÜ]Y\İHˆ
-È[˜ÛÙUT’PÛÛ\Û™[
-\›
-KÈØXÚNˆ››Ë\İÜ™HˆJKŒ
-NÂˆYˆ
-‹›ÚÊHÂˆÛÛœİ^H]ØZ]‹^
+function withTimeout(promiseFactory, ms) {
+  return Promise.race([
+    promiseFactory(),
+    sleep(ms).then(() => { throw new Error("timeout"); })
+  ]);
+}
 
-NÂˆ™]\›ˆÈ[ˆ^XY\œÎˆßKšXNˆœ›ŞLˆˆNÂˆBˆHØ]Ú
-JHÈÊˆ˜[›İYÚ
-‹ÈB‚ˆ™]\›ˆ[ÂŸB‚‹ËÈ™]ÚHT“
-Èİ]\ÈÛÙH
-›Üˆ]ÚXÚÜÊKˆšY\È[ÜšYÚ[œÈ
-^XİÛÙJB‹ËÈ
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = String(s);
+  return d.innerHTML;
+}
+
+/* ============================== scan state ============================== */
+
+let FINDINGS = [];
+let TECH = [];
+let LAST_REPORT = null;
+
+function addFinding(sev, title, subtitle, desc, fix, code) {
+  FINDINGS.push({ sev, title, subtitle, desc, fix, code: code || null });
+}
+
+/* ============================== network layer ============================== */
+
+// Direct no-cors probe: resolves if the host is reachable at network level
+// (DNS + TCP + TLS), rejects otherwise. Body/headers are opaque.
+async function probeReachable(url, ms = 12000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    await fetch(url, { mode: "no-cors", signal: ctrl.signal, cache: "no-store", redirect: "follow" });
+    return true;
+  } catch (e) {
+    return false;
+  } finally { clearTimeout(t); }
+}
+
+// Try to fetch page content. Direct CORS first, then public proxies.
+async function fetchPage(url) {
+  // 1) direct (works if the site sends CORS headers)
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+    const res = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+    clearTimeout(t);
+    const headers = {};
+    res.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });
+    const text = await res.text();
+    return { html: text, headers, via: "direct" };
+  } catch (e) { /* fall through */ }
+
+  // 2) corsproxy.io
+  try {
+    const r = await withTimeout(() =>
+      fetch("https://corsproxy.io/?url=" + encodeURIComponent(url), { cache: "no-store" }), 18000);
+    if (r.ok) {
+      const text = await r.text();
+      return { html: text, headers: {}, via: "proxy1" };
+    }
+  } catch (e) { /* fall through */ }
+
+  // 3) allorigins JSON gateway (gives status code too)
+  try {
+    const r = await withTimeout(() =>
+      fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(url), { cache: "no-store" }), 20000);
+    const j = await r.json();
+    if (j && j.contents != null) {
+      return { html: j.contents, headers: {}, via: "proxy2", status: j.status };
+    }
+  } catch (e) { /* fall through */ }
+
+  // 4) codetabs proxy fallback
+  try {
+    const r = await withTimeout(() =>
+      fetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url), { cache: "no-store" }), 20000);
+    if (r.ok) {
+      const text = await r.text();
+      return { html: text, headers: {}, via: "proxy2" };
+    }
+  } catch (e) { /* fall through */ }
+
+  return null;
+}
+
+// Fetch a URL + status code (for path checks). Tries allorigins (exact code)
+// t
