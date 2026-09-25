@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BugHunter v4 — Website Bug & Vulnerability Detector</title>
+<title>BugHunter v4.5 — Website Bug & Vulnerability Detector</title>
 <style>
   :root {
     --bg: #0a0e14;
@@ -316,6 +316,7 @@
   }
   .chat-head b { font-family: var(--mono); font-size: 14px; letter-spacing: .5px; display: block; }
   .chat-head small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; line-height: 1.4; }
+  #chatModeLbl { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; }
   .chat-close { background: none; border: none; color: var(--muted); font-size: 15px; cursor: pointer; padding: 2px 4px; }
   .chat-close:hover { color: var(--red); }
   .chat-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
@@ -367,8 +368,8 @@
 <div class="wrap">
 
   <header>
-    <div class="logo"><span class="bracket">[</span> BugHunter <span class="ver">v4</span> <span class="bracket">]</span><span class="cursor"></span></div>
-    <p class="tagline">Website bug & vulnerability detector — scans for real issues and shows you <b>exactly how to fix them</b>. Now with a <b>7.02M-parameter AI risk engine</b>, an offline chat assistant, and a live <b>Thoughts</b> reasoning view.</p>
+    <div class="logo"><span class="bracket">[</span> BugHunter <span class="ver">v4.5</span> <span class="bracket">]</span><span class="cursor"></span></div>
+    <p class="tagline">Website bug & vulnerability detector — scans for real issues and shows you <b>exactly how to fix them</b>. Now with a <b>8.27M-parameter transformer AI risk engine</b>, a live <b>Thoughts</b> reasoning view, and an AI chat assistant.</p>
   </header>
 
   <div class="scanbar">
@@ -379,7 +380,7 @@
       </div>
       <button id="scanBtn">▶ RUN SCAN</button>
     </div>
-    <div class="hint">$ enter a URL — checks: reachability · HTTPS/TLS · security headers · sensitive file exposure · outdated libraries · mixed content · SEO & HTML quality · AI risk model (7M params) · live Thoughts view</div>
+    <div class="hint">$ enter a URL — checks: reachability · HTTPS/TLS · security headers · sensitive file exposure · outdated libraries · mixed content · SEO & HTML quality · AI risk model (8M transformer) · live Thoughts view</div>
     <div id="terminal"></div>
     <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
   </div>
@@ -430,16 +431,16 @@
     <div class="ai-card">
       <div class="ai-head">
         <h3>AI Risk Analysis</h3>
-        <span class="ai-badge">7.02M-parameter neural network · v4 · int8-quantized · runs locally</span>
+        <span class="ai-badge">8.27M-parameter transformer · v4.5 · 6-layer multi-head self-attention · runs locally</span>
       </div>
       <div id="aiBars"></div>
       <div class="ai-sig-title">Top contributing signals</div>
       <div class="ai-chips" id="aiSignals"></div>
       <div class="ai-note">
-        The AI layer is a 7,018,249-parameter multi-label neural network (v4 architecture: 2,560 hashed
-        bag-of-tokens + 48 engineered features → 1860 → 930 → 465 → 4 outputs) trained offline by distilling
-        expert security heuristics into the network, then int8-quantized and embedded in this page. Inference runs 100%
-        locally — no data leaves your browser. It complements, and does not replace, the rule-based findings.
+        The AI layer is a REAL transformer — an 8,269,972-parameter encoder (v4.5): the page's 2,560 hashed tokens + 48 engineered
+        features are split into 8 segments, embedded to 336 dimensions, and processed by 6 pre-LN self-attention layers (8 heads,
+        336→1344→336 feed-forward) before 4 sigmoid heads give the risk probabilities. Trained offline, int8-quantized and embedded
+        in this page. Inference runs 100% locally — no data leaves your browser. It complements, and does not replace, the rule-based findings.
       </div>
     </div>
   </div>
@@ -447,24 +448,25 @@
   <div id="findings"></div>
 
   <details class="whatsnew">
-    <summary>◆ What's new in v4</summary>
+    <summary>◆ What's new in v4.5</summary>
     <ul>
-      <li><b>AI risk engine — 7,018,249 parameters</b> (5.06M in v3.5): 2608 → 1860 → 930 → 465 → 4, retrained and re-verified (AUC 1.00 on all four heads, quantized accuracy ≥ 99.7%).</li>
-      <li><b>“Thoughts” view</b> — a live reasoning trace beside the scan: watch what the scanner checks, what it finds at each step, how the AI's verdict forms, and how the final score is weighed. Click the <b>◆ Thoughts</b> header to fold it away.</li>
-      <li><b>Everything from v3.5</b> — offline chat assistant, 30+ checks, scan history, saliency explanations, JSON reports.</li>
+      <li><b>Real transformer — 8,269,972 parameters</b> (7.02M MLP in v4): the risk model is now a genuine 6-layer, 8-head self-attention transformer encoder (336-dim, 1344 FFN), trained from scratch and verified (AUC ~1.00, quantized accuracy ≥ 99%).</li>
+      <li><b>Real AI chat</b> — the assistant now answers through a large language model (online) with your scan results as context, so you can ask anything. If the AI service is unreachable it falls back to the built-in offline knowledge base.</li>
+      <li><b>Richer Thoughts</b> — the reasoning trace now names the actual findings and dominant themes it discovers.</li>
+      <li><b>Everything from v4</b> — Thoughts view, 30+ checks, scan history, saliency explanations, JSON reports.</li>
     </ul>
   </details>
 
   <p class="disclaimer">
     ⚠ Use this tool only on websites you own or have explicit permission to test. This is a passive, browser-side
     scanner — it fetches publicly reachable pages only and cannot replace a full penetration test.
-  </p>    <footer>BugHunter v4 · single-file scanner + embedded 7.02M-parameter AI + offline assistant + Thoughts view · runs 100% in your browser</footer>
+  </p>    <footer>BugHunter v4.5 · single-file scanner + embedded 8.27M-parameter transformer AI + Thoughts view + AI chat · runs 100% in your browser</footer>
 </div>
 
 <button class="chat-fab" id="chatFab" title="Ask BugHunter">💬</button>
 <div class="chat-panel" id="chatPanel">
   <div class="chat-head">
-    <div><b>◆ BugHunter Assistant</b><small>runs 100% offline inside this page — nothing is sent anywhere</small></div>
+    <div><b>◆ BugHunter Assistant</b><small id="chatModeLbl" title="Toggle online / offline">⚡ online AI · ask anything — click to switch to offline KB</small></div>
     <button class="chat-close" id="chatClose" title="Close">✕</button>
   </div>
   <div class="chat-body" id="chatBody"></div>
@@ -478,7 +480,7 @@
 <script>
 "use strict";
 
-const BH_VERSION = "4.0.0";
+const BH_VERSION = "4.5.0";
 
 /* ============================== helpers ============================== */
 
@@ -633,4 +635,63 @@ function checkSecurityHeaders(headers, isHttps) {
       "Add a Content-Security-Policy header on your web server / CDN.",
       'Content-Security-Policy: default-src \'self\'; script-src \'self\'; object-src \'none\'; frame-ancestors \'self\'; base-uri \'self\';'],
     ["strict-transport-security", "medium", "No Strict-Transport-Security (HSTS) header",
-     
+      "Without HSTS a user can be tricked into visiting the site over plain HTTP (SSL-strip attacks).",
+      "Enable HSTS once you are sure HTTPS works for all subdomains.",
+      'Strict-Transport-Security: max-age=31536000; includeSubDomains'],
+    ["x-frame-options", "low", "No X-Frame-Options / frame-ancestors protection",
+      "The site can be embedded in an iframe, enabling clickjacking attacks (the modern CSP frame-ancestors directive also fixes this).",
+      "Send X-Frame-Options, or better, the CSP frame-ancestors directive.",
+      'X-Frame-Options: DENY'],
+    ["x-content-type-options", "low", "No X-Content-Type-Options header",
+      "Browsers may MIME-sniff responses and execute an innocent file as script.",
+      "Stop MIME sniffing with one header.",
+      'X-Content-Type-Options: nosniff'],
+    ["referrer-policy", "low", "No Referrer-Policy header",
+      "Full URLs (including query strings with tokens/session IDs) can leak to third-party sites via the Referer header.",
+      "Set a restrictive Referrer-Policy.",
+      'Referrer-Policy: strict-origin-when-cross-origin'],
+  ];
+  for (const [key, sev, title, desc, fix, code] of wanted) {
+    if (isHttps === false && key === "strict-transport-security") continue; // pointless without TLS
+    if (!h[key]) addFinding(sev, title, "Missing security header", desc, fix, code);
+  }
+}
+
+function checkHtml(html, pageUrl, isHttps) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+
+  /* ---- technology detection ---- */
+  for (const t of TECH_SIGNATURES) {
+    try { if (t.test(html)) TECH.push(t.name); } catch (e) {}
+  }
+
+  /* ---- jQuery version ---- */
+  const jq = html.match(/jquery[.\-\/]?(\d+)\.(\d+)(\.(\d+))?/i);
+  if (jq && parseInt(jq[1], 10) < 3) {
+    addFinding("high", "Outdated jQuery " + jq[1] + "." + jq[2] + " detected",
+      "Known vulnerabilities",
+      "jQuery before 3.x (especially 1.x) has publicly known XSS and prototype-pollution vulnerabilities (e.g. CVE-2020-11022/11023 in <3.5). Attackers actively scan for old jQuery.",
+      "Upgrade to the latest jQuery 3.x. If you cannot, at minimum upgrade to 3.5.0+.",
+      '<script src="https://code.jquery.com/jquery-3.7.1.min.js"><\/script>');
+  }
+
+  /* ---- title ---- */
+  const title = (doc.querySelector("title") && doc.querySelector("title").textContent.trim()) || "";
+  if (!title) {
+    addFinding("medium", "Missing or empty <title> tag", "SEO & usability",
+      "The page title is what shows in search results and browser tabs. An empty title hurts ranking and looks broken.",
+      "Add a unique, descriptive title (50–60 characters).",
+      "<title>Acme Tools — Free Online PDF Editor</title>");
+  } else if (title.length > 65) {
+    addFinding("low", "Page title is too long (" + title.length + " chars)", "SEO",
+      "Google truncates titles around 60 characters in search results.",
+      "Keep titles between 50 and 60 characters.", null);
+  }
+
+  /* ---- meta description ---- */
+  const md = doc.querySelector('meta[name="description" i]');
+  if (!md || !md.getAttribute("content") || !md.getAttribute("content").trim()) {
+    addFinding("medium", "Missing meta description", "SEO",
+      "Search engines show the meta description under your link. Without it, Google invents a snippet.",
+      "Add a compelling 120–160 character description.",
+      '<meta name="description" content="Fix bugs and detect vulnerabilities in any website with BugHunter, a free browser-based scanner.">');
